@@ -7,7 +7,7 @@ from urllib.parse import parse_qs, urlparse
 
 from server.events import record_event
 from server.file_listing import list_directory
-from server.monitor_status import read_latest_status
+from server.monitor_status import get_disk_usage, read_latest_status
 from server.storage import build_camera_dir, save_chunk
 
 
@@ -62,6 +62,8 @@ class ChunksUploadHandler(SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(str(err).encode("utf-8"))
             return
+
+        status.update(get_disk_usage(self.storage_root))
 
         body = json.dumps(status).encode("utf-8")
         self.send_response(200)

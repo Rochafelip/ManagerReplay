@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from server.monitor_status import read_latest_status
+from server.monitor_status import get_disk_usage, read_latest_status
 
 CSV_HEADER = "timestamp,cpu_pct,ram_used_mb,ram_total_mb,temp_c,arm_clock_mhz,core_clock_mhz,undervoltage_now,freq_capped_now,throttled_now,undervoltage_ever\n"
 
@@ -57,3 +57,19 @@ def test_read_latest_status_raises_when_only_header(tmp_path: Path):
 
     with pytest.raises(ValueError):
         read_latest_status(csv_path)
+
+
+def test_get_disk_usage_returns_plausible_totals(tmp_path: Path):
+    usage = get_disk_usage(tmp_path)
+
+    assert usage["disk_total_mb"] > 0
+    assert 0 <= usage["disk_used_mb"] <= usage["disk_total_mb"]
+
+
+def test_get_disk_usage_creates_missing_directory(tmp_path: Path):
+    target = tmp_path / "does" / "not" / "exist"
+
+    usage = get_disk_usage(target)
+
+    assert target.is_dir()
+    assert usage["disk_total_mb"] > 0

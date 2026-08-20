@@ -95,8 +95,20 @@
       return "ok";
     }
 
+    function diskClass(pct) {
+      if (pct >= 90) return "bad";
+      if (pct >= 75) return "warn";
+      return "ok";
+    }
+
+    function formatStorage(mb) {
+      if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
+      return `${mb} MB`;
+    }
+
     function render(status) {
       const ramPct = ((status.ram_used_mb / status.ram_total_mb) * 100).toFixed(0);
+      const diskPct = ((status.disk_used_mb / status.disk_total_mb) * 100).toFixed(0);
       const alerts = [];
       if (status.undervoltage_now) alerts.push("⚠️ Subvoltagem ATIVA AGORA — fonte fraca, troque o carregador.");
       if (status.freq_capped_now || status.throttled_now) alerts.push("⚠️ CPU sendo limitada agora por energia/temperatura.");
@@ -119,6 +131,10 @@
           <div class="card">
             <div class="label">Clock CPU / GPU</div>
             <div class="value" style="font-size:1.1em;">${status.arm_clock_mhz} / ${status.core_clock_mhz} MHz</div>
+          </div>
+          <div class="card" style="grid-column: 1 / -1;">
+            <div class="label">Armazenamento</div>
+            <div class="value ${diskClass(diskPct)}">${formatStorage(status.disk_used_mb)}<br /><span style="font-size:0.5em;color:#999;">de ${formatStorage(status.disk_total_mb)} (${diskPct}%)</span></div>
           </div>
         </div>
         <div id="alerts">${alerts.map((a) => `<div class="alert">${a}</div>`).join("")}</div>

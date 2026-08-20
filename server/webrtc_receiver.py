@@ -7,7 +7,7 @@ from aiortc.contrib.media import MediaRecorder
 
 from server.events import record_event
 from server.file_listing import list_directory
-from server.monitor_status import read_latest_status
+from server.monitor_status import get_disk_usage, read_latest_status
 from server.storage import build_camera_dir
 
 _active_connections: set[RTCPeerConnection] = set()
@@ -66,10 +66,12 @@ async def _handle_files_list(request: web.Request) -> web.Response:
 
 async def _handle_monitor_status(request: web.Request) -> web.Response:
     monitor_csv: Path = request.app["monitor_csv"]
+    storage_root: Path = request.app["storage_root"]
     try:
         status = read_latest_status(monitor_csv)
     except (ValueError, FileNotFoundError) as err:
         return web.Response(status=404, text=str(err))
+    status.update(get_disk_usage(storage_root))
     return web.json_response(status)
 
 

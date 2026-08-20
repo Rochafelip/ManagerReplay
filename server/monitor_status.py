@@ -1,4 +1,5 @@
 import csv
+import shutil
 from pathlib import Path
 
 _INT_FIELDS = ("ram_used_mb", "ram_total_mb", "arm_clock_mhz", "core_clock_mhz")
@@ -25,3 +26,13 @@ def read_latest_status(csv_path: Path) -> dict:
     for field in _BOOL_FIELDS:
         status[field] = row[field] == "1"
     return status
+
+
+def get_disk_usage(path: Path) -> dict:
+    path.mkdir(parents=True, exist_ok=True)
+    usage = shutil.disk_usage(path)
+    mb = 1024 * 1024
+    return {
+        "disk_used_mb": usage.used // mb,
+        "disk_total_mb": usage.total // mb,
+    }

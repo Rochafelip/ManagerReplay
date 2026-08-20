@@ -174,6 +174,8 @@ def test_monitor_status_route_returns_latest_row(tmp_path: Path, self_signed_cer
         assert body["cpu_pct"] == 8.2
         assert body["temp_c"] == 41.3
         assert body["undervoltage_now"] is False
+        assert body["disk_total_mb"] > 0
+        assert body["disk_used_mb"] >= 0
     finally:
         server.shutdown()
         thread.join(timeout=2)
