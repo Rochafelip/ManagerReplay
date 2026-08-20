@@ -14,6 +14,11 @@ const startedAt = Date.now();
 let totalBytesSent = 0;
 let chunksSent = 0;
 
+const LANCE_MIN_MS = 30000;
+const lanceButtonEl = document.getElementById("lance-button");
+lanceButtonEl.disabled = true;
+lanceButtonEl.textContent = "⚡ Lance em 30s";
+
 function formatBytes(bytes) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -28,9 +33,19 @@ function formatElapsed(ms) {
 }
 
 function updateStats() {
-  const elapsed = formatElapsed(Date.now() - startedAt);
-  elapsedEl.textContent = elapsed;
+  const elapsedMs = Date.now() - startedAt;
+  elapsedEl.textContent = formatElapsed(elapsedMs);
   statsEl.textContent = `Modo: ${mode} · Câmera: ${cameraId} · Chunks enviados: ${chunksSent} · Total enviado: ${formatBytes(totalBytesSent)}`;
+
+  if (elapsedMs >= LANCE_MIN_MS) {
+    if (lanceButtonEl.disabled) {
+      lanceButtonEl.disabled = false;
+      lanceButtonEl.textContent = "⚡ Lance";
+    }
+  } else {
+    const remaining = Math.ceil((LANCE_MIN_MS - elapsedMs) / 1000);
+    lanceButtonEl.textContent = `⚡ Lance em ${remaining}s`;
+  }
 }
 
 setInterval(updateStats, 1000);
@@ -151,19 +166,30 @@ async function start() {
 }
 
 const lanceToastEl = document.getElementById("lance-toast");
+const videoWrapEl = document.getElementById("video-wrap");
 let lanceToastTimer = null;
 
-document.getElementById("lance-button").addEventListener("click", async () => {
-  try {
-    const response = await fetch(`/events?camera=${cameraId}`, { method: "POST" });
-    const event = await response.json();
-    lanceToastEl.textContent = `✅ ${event.nome} registrado`;
-  } catch (err) {
-    lanceToastEl.textContent = `erro ao registrar lance: ${err.message}`;
-  }
+function notifyLancePressed(message) {
+  lanceToastEl.textContent = message;
   lanceToastEl.classList.add("visible");
   clearTimeout(lanceToastTimer);
   lanceToastTimer = setTimeout(() => lanceToastEl.classList.remove("visible"), 3000);
+
+  videoWrapEl.classList.remove("flash");
+  void videoWrapEl.offsetWidth; // force reflow so the animation restarts on repeated clicks
+  videoWrapEl.classList.add("flash");
+
+  if (navigator.vibrate) navigator.vibrate(150);
+}
+
+lanceButtonEl.addEventListener("click", async () => {
+  try {
+    const response = await fetch(`/events?camera=${cameraId}`, { method: "POST" });
+    const event = await response.json();
+    notifyLancePressed(`✅ ${event.nome} registrado`);
+  } catch (err) {
+    notifyLancePressed(`erro ao registrar lance: ${err.message}`);
+  }
 });
 
 start().catch((err) => {

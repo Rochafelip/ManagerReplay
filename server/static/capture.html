@@ -88,6 +88,15 @@
       color: #111;
     }
     #lance-button:active { background: #d97706; }
+    #lance-button:disabled {
+      background: #444;
+      color: #999;
+    }
+    @keyframes flash-pulse {
+      0% { box-shadow: inset 0 0 0 6px rgba(245, 158, 11, 0.9); }
+      100% { box-shadow: inset 0 0 0 6px rgba(245, 158, 11, 0); }
+    }
+    #video-wrap.flash { animation: flash-pulse 0.5s ease-out; }
     #lance-toast {
       text-align: center;
       margin-top: 0.6em;
@@ -138,6 +147,6 @@
     <div id="save-path"></div>
   </details>
   <a class="back-link" href="cameras.html">&larr; voltar ao menu</a>
-  <script src="client.js?v=8"></script>
+  <script src="client.js?v=9"></script>
 </body>
 </html>
