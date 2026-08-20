@@ -26,7 +26,19 @@ const lanceButtonEl = document.getElementById("lance-button");
 const recordToggleEl = document.getElementById("record-toggle");
 const recBadgeEl = document.getElementById("rec-badge");
 const deviceSelectEl = document.getElementById("camera-device");
+const qualitySelectEl = document.getElementById("quality-select");
 const saveToastEl = document.getElementById("save-toast");
+
+const QUALITY_PRESETS = {
+  hd30: { width: 1280, height: 720, frameRate: 30 },
+  hd60: { width: 1280, height: 720, frameRate: 60 },
+  fhd30: { width: 1920, height: 1080, frameRate: 30 },
+  fhd60: { width: 1920, height: 1080, frameRate: 60 },
+};
+
+let quality = params.get("quality") || "hd30";
+if (!QUALITY_PRESETS[quality]) quality = "hd30";
+qualitySelectEl.value = quality;
 
 function formatBytes(bytes) {
   if (bytes < 1024) return `${bytes} B`;
@@ -57,22 +69,20 @@ function updateStats() {
   }
 }
 
-const constraints = {
-  video: deviceId
-    ? {
-        deviceId: { exact: deviceId },
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-        frameRate: { ideal: 30 },
-      }
-    : {
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-        frameRate: { ideal: 30 },
-        facingMode: { ideal: facing },
-      },
-  audio: false,
-};
+function buildVideoConstraints(overrideDeviceId) {
+  const preset = QUALITY_PRESETS[quality];
+  const base = {
+    width: { ideal: preset.width },
+    height: { ideal: preset.height },
+    frameRate: { ideal: preset.frameRate },
+  };
+  const targetDeviceId = overrideDeviceId || deviceId;
+  return targetDeviceId
+    ? { ...base, deviceId: { exact: targetDeviceId } }
+    : { ...base, facingMode: { ideal: facing } };
+}
+
+const constraints = { video: buildVideoConstraints(), audio: false };
 
 const FACING_LABEL_HINTS = {
   environment: ["back", "traseira", "rear", "environment"],
@@ -112,16 +122,8 @@ async function populateDeviceSelect(activeStream) {
   select.addEventListener("change", () => switchCamera(select.value));
 }
 
-async function switchCamera(newDeviceId) {
-  const newStream = await navigator.mediaDevices.getUserMedia({
-    video: {
-      deviceId: { exact: newDeviceId },
-      width: { ideal: 1280 },
-      height: { ideal: 720 },
-      frameRate: { ideal: 30 },
-    },
-    audio: false,
-  });
+async function switchVideoTrack(newConstraints, urlUpdates) {
+  const newStream = await navigator.mediaDevices.getUserMedia({ video: newConstraints, audio: false });
   const newVideoTrack = newStream.getVideoTracks()[0];
   const oldVideoTrack = mediaStream.getVideoTracks()[0];
 
@@ -135,9 +137,19 @@ async function switchCamera(newDeviceId) {
   document.getElementById("preview").srcObject = mediaStream;
 
   const nextUrl = new URL(window.location.href);
-  nextUrl.searchParams.set("device", newDeviceId);
+  Object.entries(urlUpdates).forEach(([key, value]) => nextUrl.searchParams.set(key, value));
   window.history.replaceState({}, "", nextUrl.toString());
 }
+
+function switchCamera(newDeviceId) {
+  return switchVideoTrack(buildVideoConstraints(newDeviceId), { device: newDeviceId });
+}
+
+qualitySelectEl.addEventListener("change", () => {
+  quality = qualitySelectEl.value;
+  const activeDeviceId = mediaStream.getVideoTracks()[0].getSettings().deviceId;
+  switchVideoTrack(buildVideoConstraints(activeDeviceId), { quality });
+});
 
 let mediaStream = null;
 let recorder = null;
@@ -170,6 +182,7 @@ function beginRecording() {
 
   recorder.start(30000);
 
+  qualitySelectEl.disabled = true;
   recBadgeEl.hidden = false;
   recordToggleEl.textContent = "■ Parar gravação";
   recordToggleEl.classList.add("recording");
@@ -196,6 +209,7 @@ async function endRecording() {
   await lastUploadPromise;
 
   clearInterval(statsTimer);
+  qualitySelectEl.disabled = false;
   recBadgeEl.hidden = true;
   deviceSelectEl.disabled = false;
   lanceButtonEl.hidden = true;
