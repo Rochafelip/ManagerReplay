@@ -71,14 +71,14 @@ def test_chunks_receiver_writes_posted_chunk_to_disk(tmp_path: Path, self_signed
         server.shutdown()
         thread.join(timeout=2)
 
-    written = storage_root / "chunks" / "2" / "camera-1" / "2026-08-20T18-32-10_parte1.webm"
+    written = storage_root / "camera-1" / "2026-08-20T18-32-10_parte1.webm"
     assert written.read_bytes() == b"fake-video-bytes"
 
 
 def test_files_route_serves_recordings_from_storage_root(tmp_path: Path, self_signed_cert):
     cert_path, key_path = self_signed_cert
     storage_root = tmp_path / "storage"
-    camera_dir = storage_root / "chunks" / "1" / "camera-1"
+    camera_dir = storage_root / "camera-1"
     camera_dir.mkdir(parents=True)
     (camera_dir / "chunk-0000.webm").write_bytes(b"video-bytes")
 
@@ -86,7 +86,7 @@ def test_files_route_serves_recordings_from_storage_root(tmp_path: Path, self_si
 
     try:
         conn = _https_connection(port)
-        conn.request("GET", "/files/chunks/1/camera-1/chunk-0000.webm")
+        conn.request("GET", "/files/camera-1/chunk-0000.webm")
         response = conn.getresponse()
         body = response.read()
         assert response.status == 200

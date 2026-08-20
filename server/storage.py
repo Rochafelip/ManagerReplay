@@ -2,8 +2,8 @@ import re
 from pathlib import Path
 
 
-def build_camera_dir(storage_root: Path, mode: str, n_cameras: int, camera_id: int) -> Path:
-    camera_dir = storage_root / mode / str(n_cameras) / f"camera-{camera_id}"
+def build_camera_dir(storage_root: Path, camera_id: int) -> Path:
+    camera_dir = storage_root / f"camera-{camera_id}"
     camera_dir.mkdir(parents=True, exist_ok=True)
     return camera_dir
 

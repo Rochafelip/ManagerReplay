@@ -9,7 +9,7 @@ const statusEl = document.getElementById("status");
 const statsEl = document.getElementById("stats");
 const pathEl = document.getElementById("save-path");
 const elapsedEl = document.getElementById("elapsed");
-pathEl.textContent = `Salvando na Pi em: ~/managerreplay/data/recordings/${mode}/<n-cameras>/camera-${cameraId}/`;
+pathEl.textContent = `Salvando na Pi em: ~/managerreplay/data/recordings/camera-${cameraId}/`;
 
 if (operatorName) {
   document.getElementById("operator-name").textContent = operatorName;

@@ -3,16 +3,16 @@ from pathlib import Path
 from server.storage import build_camera_dir, save_chunk
 
 
-def test_build_camera_dir_creates_nested_path(tmp_path: Path):
-    result = build_camera_dir(tmp_path, mode="chunks", n_cameras=2, camera_id=1)
+def test_build_camera_dir_creates_camera_path(tmp_path: Path):
+    result = build_camera_dir(tmp_path, camera_id=1)
 
-    assert result == tmp_path / "chunks" / "2" / "camera-1"
+    assert result == tmp_path / "camera-1"
     assert result.is_dir()
 
 
 def test_build_camera_dir_is_idempotent(tmp_path: Path):
-    first = build_camera_dir(tmp_path, mode="webrtc", n_cameras=1, camera_id=1)
-    second = build_camera_dir(tmp_path, mode="webrtc", n_cameras=1, camera_id=1)
+    first = build_camera_dir(tmp_path, camera_id=1)
+    second = build_camera_dir(tmp_path, camera_id=1)
 
     assert first == second
     assert first.is_dir()

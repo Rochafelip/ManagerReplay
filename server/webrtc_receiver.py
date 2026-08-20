@@ -14,7 +14,6 @@ _active_connections: set[RTCPeerConnection] = set()
 
 async def _handle_offer(request: web.Request) -> web.Response:
     camera_id = int(request.match_info["camera_id"])
-    n_cameras: int = request.app["n_cameras"]
     storage_root: Path = request.app["storage_root"]
 
     params = await request.json()
@@ -23,7 +22,7 @@ async def _handle_offer(request: web.Request) -> web.Response:
     pc = RTCPeerConnection()
     _active_connections.add(pc)
 
-    camera_dir = build_camera_dir(storage_root, "webrtc", n_cameras, camera_id)
+    camera_dir = build_camera_dir(storage_root, camera_id)
     recorder = MediaRecorder(str(camera_dir / "recording.webm"))
 
     @pc.on("track")

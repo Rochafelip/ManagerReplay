@@ -72,7 +72,7 @@ class ChunksUploadHandler(SimpleHTTPRequestHandler):
         length = int(self.headers.get("Content-Length", 0))
         data = self.rfile.read(length)
 
-        camera_dir = build_camera_dir(self.storage_root, "chunks", self.n_cameras, camera_id)
+        camera_dir = build_camera_dir(self.storage_root, camera_id)
         save_chunk(camera_dir, session_id, part_number, data)
 
         self.send_response(204)
