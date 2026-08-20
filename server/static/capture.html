@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>ManagerReplay Spike 2</title>
+  <title>ManagerReplay</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -70,6 +70,24 @@
       color: #93c5fd;
       text-decoration: none;
     }
+    #lance-button {
+      width: 100%;
+      padding: 1.2em;
+      margin-top: 0.75em;
+      font-size: 1.3em;
+      font-weight: 700;
+      border: none;
+      border-radius: 10px;
+      background: #f59e0b;
+      color: #111;
+    }
+    #lance-button:active { background: #d97706; }
+    #lance-feedback {
+      margin-top: 0.5em;
+      font-weight: 600;
+      color: #f59e0b;
+      min-height: 1.2em;
+    }
   </style>
 </head>
 <body>
@@ -86,7 +104,9 @@
     <div id="save-path"></div>
   </div>
   <select id="camera-device"></select>
+  <button id="lance-button" type="button">⚡ Lance</button>
+  <div id="lance-feedback"></div>
   <a class="back-link" href="cameras.html">&larr; voltar ao menu</a>
-  <script src="client.js?v=5"></script>
+  <script src="client.js?v=6"></script>
 </body>
 </html>

@@ -5,7 +5,8 @@ from aiohttp import web
 from aiortc import RTCPeerConnection, RTCSessionDescription
 from aiortc.contrib.media import MediaRecorder
 
-from spikes.spike2.storage import build_camera_dir
+from server.events import record_event
+from server.storage import build_camera_dir
 
 _active_connections: set[RTCPeerConnection] = set()
 
@@ -45,6 +46,13 @@ async def _handle_offer(request: web.Request) -> web.Response:
     return web.json_response({"sdp": pc.localDescription.sdp, "type": pc.localDescription.type})
 
 
+async def _handle_event(request: web.Request) -> web.Response:
+    camera_id = request.query.get("camera", "?")
+    events_file: Path = request.app["events_file"]
+    event = record_event(events_file, camera_id)
+    return web.json_response(event)
+
+
 async def _on_shutdown(app: web.Application):
     for pc in list(_active_connections):
         await pc.close()
@@ -57,6 +65,7 @@ def run(
     static_dir: Path,
     cert_path: Path,
     key_path: Path,
+    events_file: Path,
     host: str = "0.0.0.0",
     port: int = 8443,
 ):
@@ -65,7 +74,9 @@ def run(
     app = web.Application()
     app["storage_root"] = storage_root
     app["n_cameras"] = n_cameras
+    app["events_file"] = events_file
     app.router.add_post("/offer/{camera_id}", _handle_offer)
+    app.router.add_post("/events", _handle_event)
     app.router.add_static("/files/", path=str(storage_root), name="files", show_index=True)
     app.router.add_static("/", path=str(static_dir), name="static")
     app.on_shutdown.append(_on_shutdown)

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from spikes.spike2.storage import build_camera_dir, save_chunk
+from server.storage import build_camera_dir, save_chunk
 
 
 def test_build_camera_dir_creates_nested_path(tmp_path: Path):

@@ -9,7 +9,7 @@ const statsEl = document.getElementById("stats");
 const pathEl = document.getElementById("save-path");
 document.getElementById("mode-label").textContent = mode;
 document.getElementById("camera-label").textContent = cameraId;
-pathEl.textContent = `Salvando na Pi em: ~/highlightbox-spike2/${mode}/<n-cameras>/camera-${cameraId}/`;
+pathEl.textContent = `Salvando na Pi em: ~/managerreplay-data/recordings/${mode}/<n-cameras>/camera-${cameraId}/`;
 
 const startedAt = Date.now();
 let totalBytesSent = 0;
@@ -148,6 +148,18 @@ async function start() {
     await startWebrtcMode(stream);
   }
 }
+
+const lanceFeedbackEl = document.getElementById("lance-feedback");
+
+document.getElementById("lance-button").addEventListener("click", async () => {
+  try {
+    const response = await fetch(`/events?camera=${cameraId}`, { method: "POST" });
+    const event = await response.json();
+    lanceFeedbackEl.textContent = `✅ ${event.nome} registrado às ${event.timestamp}`;
+  } catch (err) {
+    lanceFeedbackEl.textContent = `erro ao registrar lance: ${err.message}`;
+  }
+});
 
 start().catch((err) => {
   statusEl.textContent = `erro: ${err.message}`;
