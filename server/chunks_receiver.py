@@ -62,7 +62,8 @@ class ChunksUploadHandler(SimpleHTTPRequestHandler):
         query = parse_qs(urlparse(self.path).query)
         try:
             camera_id = int(query["camera"][0])
-            sequence_number = int(query["seq"][0])
+            session_id = query["session"][0]
+            part_number = int(query["part"][0])
         except (KeyError, ValueError, IndexError):
             self.send_response(400)
             self.end_headers()
@@ -72,7 +73,7 @@ class ChunksUploadHandler(SimpleHTTPRequestHandler):
         data = self.rfile.read(length)
 
         camera_dir = build_camera_dir(self.storage_root, "chunks", self.n_cameras, camera_id)
-        save_chunk(camera_dir, sequence_number, data)
+        save_chunk(camera_dir, session_id, part_number, data)
 
         self.send_response(204)
         self.end_headers()

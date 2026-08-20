@@ -18,14 +18,21 @@ def test_build_camera_dir_is_idempotent(tmp_path: Path):
     assert first.is_dir()
 
 
-def test_save_chunk_writes_file_with_zero_padded_sequence(tmp_path: Path):
-    path = save_chunk(tmp_path, sequence_number=3, data=b"fake-video-bytes")
+def test_save_chunk_names_file_by_session_and_part(tmp_path: Path):
+    path = save_chunk(tmp_path, session_id="2026-08-20T18-32-10", part_number=1, data=b"fake-video-bytes")
 
-    assert path == tmp_path / "chunk-0003.webm"
+    assert path == tmp_path / "2026-08-20T18-32-10_parte1.webm"
     assert path.read_bytes() == b"fake-video-bytes"
 
 
-def test_save_chunk_handles_sequence_above_9999(tmp_path: Path):
-    path = save_chunk(tmp_path, sequence_number=12345, data=b"x")
+def test_save_chunk_handles_double_digit_parts(tmp_path: Path):
+    path = save_chunk(tmp_path, session_id="2026-08-20T18-32-10", part_number=12, data=b"x")
 
-    assert path == tmp_path / "chunk-12345.webm"
+    assert path == tmp_path / "2026-08-20T18-32-10_parte12.webm"
+
+
+def test_save_chunk_sanitizes_unsafe_session_id(tmp_path: Path):
+    path = save_chunk(tmp_path, session_id="../../etc/passwd", part_number=1, data=b"x")
+
+    assert path.parent == tmp_path
+    assert "/" not in path.name and ".." not in path.name

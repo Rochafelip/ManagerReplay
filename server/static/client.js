@@ -80,18 +80,19 @@ async function populateDeviceSelect(activeStream) {
 
 async function startChunksMode(stream) {
   const recorder = new MediaRecorder(stream, { mimeType: "video/webm;codecs=vp8" });
-  let sequence = 0;
+  const sessionId = new Date().toISOString().replace(/[:.]/g, "-");
+  let partNumber = 1;
 
   recorder.ondataavailable = async (event) => {
     if (event.data.size === 0) return;
-    const seq = sequence++;
-    await fetch(`/upload?camera=${cameraId}&seq=${seq}`, {
+    const part = partNumber++;
+    await fetch(`/upload?camera=${cameraId}&session=${sessionId}&part=${part}`, {
       method: "POST",
       body: event.data,
     });
     totalBytesSent += event.data.size;
     chunksSent += 1;
-    statusEl.textContent = `chunks: enviado chunk ${seq} (${formatBytes(event.data.size)})`;
+    statusEl.textContent = `chunks: enviado parte ${part} (${formatBytes(event.data.size)})`;
     updateStats();
   };
 

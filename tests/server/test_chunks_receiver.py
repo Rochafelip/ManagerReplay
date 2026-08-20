@@ -64,14 +64,14 @@ def test_chunks_receiver_writes_posted_chunk_to_disk(tmp_path: Path, self_signed
 
     try:
         conn = _https_connection(port)
-        conn.request("POST", "/upload?camera=1&seq=3", body=b"fake-video-bytes")
+        conn.request("POST", "/upload?camera=1&session=2026-08-20T18-32-10&part=1", body=b"fake-video-bytes")
         response = conn.getresponse()
         assert response.status == 204
     finally:
         server.shutdown()
         thread.join(timeout=2)
 
-    written = storage_root / "chunks" / "2" / "camera-1" / "chunk-0003.webm"
+    written = storage_root / "chunks" / "2" / "camera-1" / "2026-08-20T18-32-10_parte1.webm"
     assert written.read_bytes() == b"fake-video-bytes"
 
 

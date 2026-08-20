@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 
@@ -7,7 +8,8 @@ def build_camera_dir(storage_root: Path, mode: str, n_cameras: int, camera_id: i
     return camera_dir
 
 
-def save_chunk(camera_dir: Path, sequence_number: int, data: bytes) -> Path:
-    chunk_path = camera_dir / f"chunk-{sequence_number:04d}.webm"
+def save_chunk(camera_dir: Path, session_id: str, part_number: int, data: bytes) -> Path:
+    safe_session_id = re.sub(r"[^A-Za-z0-9_-]", "", session_id)
+    chunk_path = camera_dir / f"{safe_session_id}_parte{part_number}.webm"
     chunk_path.write_bytes(data)
     return chunk_path
