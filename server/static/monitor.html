@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icons/icon-32.png" sizes="32x32" type="image/png" />
+  <link rel="apple-touch-icon" href="icons/icon-180.png" />
+  <meta name="theme-color" content="#111827" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>ManagerReplay — Monitor</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, system-ui, sans-serif;
+      background: #111;
+      color: #eee;
+      margin: 0;
+      padding: 1.5em 1em;
+      min-height: 100vh;
+    }
+    h1 { font-size: 1.2em; margin: 0 0 0.3em; }
+    .subtitle { color: #999; font-size: 0.85em; margin: 0 0 1.2em; }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75em;
+    }
+    .card {
+      background: #1e1e1e;
+      border-radius: 12px;
+      padding: 1em;
+    }
+    .card .label {
+      font-size: 0.75em;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #999;
+      margin-bottom: 0.4em;
+    }
+    .card .value { font-size: 1.6em; font-weight: 700; }
+    .card .value.ok { color: #4ade80; }
+    .card .value.warn { color: #f59e0b; }
+    .card .value.bad { color: #dc2626; }
+    #alerts { margin-top: 1em; }
+    .alert {
+      background: rgba(220, 38, 38, 0.15);
+      border: 1px solid #dc2626;
+      color: #f87171;
+      border-radius: 10px;
+      padding: 0.8em 1em;
+      margin-bottom: 0.5em;
+      font-size: 0.9em;
+      font-weight: 600;
+    }
+    #last-updated { font-size: 0.8em; color: #666; margin-top: 1em; }
+    #error-banner {
+      background: rgba(220, 38, 38, 0.15);
+      border: 1px solid #dc2626;
+      border-radius: 10px;
+      padding: 1em;
+      color: #f87171;
+      font-size: 0.9em;
+    }
+    a.back-link {
+      display: inline-block;
+      margin-top: 1.5em;
+      color: #93c5fd;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>📊 Monitor da Pi</h1>
+  <p class="subtitle">CPU, memória e temperatura em tempo real (atualiza a cada 3s)</p>
+
+  <div id="content"></div>
+  <div id="last-updated"></div>
+  <a class="back-link" href="index.html">&larr; voltar ao menu</a>
+
+  <script>
+    const contentEl = document.getElementById("content");
+    const lastUpdatedEl = document.getElementById("last-updated");
+
+    function cpuClass(pct) {
+      if (pct >= 90) return "bad";
+      if (pct >= 70) return "warn";
+      return "ok";
+    }
+
+    function tempClass(temp) {
+      if (temp >= 80) return "bad";
+      if (temp >= 70) return "warn";
+      return "ok";
+    }
+
+    function render(status) {
+      const ramPct = ((status.ram_used_mb / status.ram_total_mb) * 100).toFixed(0);
+      const alerts = [];
+      if (status.undervoltage_now) alerts.push("⚠️ Subvoltagem ATIVA AGORA — fonte fraca, troque o carregador.");
+      if (status.freq_capped_now || status.throttled_now) alerts.push("⚠️ CPU sendo limitada agora por energia/temperatura.");
+      if (status.undervoltage_ever) alerts.push("ℹ️ Já ocorreu subvoltagem desde que a Pi ligou.");
+
+      contentEl.innerHTML = `
+        <div class="grid">
+          <div class="card">
+            <div class="label">CPU</div>
+            <div class="value ${cpuClass(status.cpu_pct)}">${status.cpu_pct.toFixed(1)}%</div>
+          </div>
+          <div class="card">
+            <div class="label">Temperatura</div>
+            <div class="value ${tempClass(status.temp_c)}">${status.temp_c.toFixed(1)}°C</div>
+          </div>
+          <div class="card">
+            <div class="label">RAM</div>
+            <div class="value">${status.ram_used_mb} MB<br /><span style="font-size:0.5em;color:#999;">de ${status.ram_total_mb} MB (${ramPct}%)</span></div>
+          </div>
+          <div class="card">
+            <div class="label">Clock CPU / GPU</div>
+            <div class="value" style="font-size:1.1em;">${status.arm_clock_mhz} / ${status.core_clock_mhz} MHz</div>
+          </div>
+        </div>
+        <div id="alerts">${alerts.map((a) => `<div class="alert">${a}</div>`).join("")}</div>
+      `;
+      lastUpdatedEl.textContent = `Última leitura: ${status.timestamp}`;
+    }
+
+    async function poll() {
+      try {
+        const response = await fetch("/monitor-status");
+        if (!response.ok) throw new Error("monitor.csv ainda não existe na Pi");
+        const status = await response.json();
+        render(status);
+      } catch (err) {
+        contentEl.innerHTML = `<div id="error-banner">Não foi possível ler o status: ${err.message}</div>`;
+      }
+    }
+
+    poll();
+    setInterval(poll, 3000);
+  </script>
+</body>
+</html>

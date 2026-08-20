@@ -16,6 +16,7 @@ def parse_args():
     parser.add_argument("--key", required=True, help="Path to mkcert-generated key file")
     parser.add_argument("--storage-root", default="~/managerreplay/data/recordings")
     parser.add_argument("--events-file", default="~/managerreplay/data/events.jsonl")
+    parser.add_argument("--monitor-csv", default="~/managerreplay/monitor/monitor.csv")
     parser.add_argument("--static-dir", default=str(Path(__file__).parent / "static"))
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8443)
@@ -29,6 +30,7 @@ def main():
     cert_path = Path(args.cert).expanduser()
     key_path = Path(args.key).expanduser()
     events_file = Path(args.events_file).expanduser()
+    monitor_csv = Path(args.monitor_csv).expanduser()
 
     if args.mode == "chunks":
         from server import chunks_receiver as receiver
@@ -42,6 +44,7 @@ def main():
         cert_path=cert_path,
         key_path=key_path,
         events_file=events_file,
+        monitor_csv=monitor_csv,
         host=args.host,
         port=args.port,
     )

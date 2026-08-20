@@ -32,6 +32,7 @@ def _start_server(tmp_path, cert_path, key_path, storage_root=None):
     static_dir = tmp_path / "static"
     static_dir.mkdir(exist_ok=True)
     events_file = tmp_path / "events.jsonl"
+    monitor_csv = tmp_path / "monitor.csv"
 
     server = chunks_receiver.build_server(
         storage_root=storage_root,
@@ -40,6 +41,7 @@ def _start_server(tmp_path, cert_path, key_path, storage_root=None):
         cert_path=cert_path,
         key_path=key_path,
         events_file=events_file,
+        monitor_csv=monitor_csv,
         host="127.0.0.1",
         port=0,
     )
@@ -148,6 +150,30 @@ def test_files_list_route_returns_directory_entries(tmp_path: Path, self_signed_
         body = json.loads(response.read())
         assert response.status == 200
         assert body == [{"name": "chunk-0000.webm", "is_dir": False, "size": 4, "mtime": body[0]["mtime"]}]
+    finally:
+        server.shutdown()
+        thread.join(timeout=2)
+
+
+def test_monitor_status_route_returns_latest_row(tmp_path: Path, self_signed_cert):
+    cert_path, key_path = self_signed_cert
+    (tmp_path / "monitor.csv").write_text(
+        "timestamp,cpu_pct,ram_used_mb,ram_total_mb,temp_c,arm_clock_mhz,core_clock_mhz,"
+        "undervoltage_now,freq_capped_now,throttled_now,undervoltage_ever\n"
+        "2026-08-20 18:00:00,8.2,164,955,41.3,700,275,0,0,0,0\n"
+    )
+
+    server, thread, port = _start_server(tmp_path, cert_path, key_path)
+
+    try:
+        conn = _https_connection(port)
+        conn.request("GET", "/monitor-status")
+        response = conn.getresponse()
+        body = json.loads(response.read())
+        assert response.status == 200
+        assert body["cpu_pct"] == 8.2
+        assert body["temp_c"] == 41.3
+        assert body["undervoltage_now"] is False
     finally:
         server.shutdown()
         thread.join(timeout=2)
