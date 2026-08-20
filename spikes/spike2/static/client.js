@@ -1,17 +1,25 @@
 const params = new URLSearchParams(window.location.search);
 const mode = params.get("mode") || "chunks";
 const cameraId = params.get("camera") || "1";
+const facing = params.get("facing") || "environment";
 
 const statusEl = document.getElementById("status");
 document.getElementById("mode-label").textContent = mode;
 document.getElementById("camera-label").textContent = cameraId;
+
+document.getElementById("switch-camera").addEventListener("click", () => {
+  const nextFacing = facing === "environment" ? "user" : "environment";
+  const nextUrl = new URL(window.location.href);
+  nextUrl.searchParams.set("facing", nextFacing);
+  window.location.href = nextUrl.toString();
+});
 
 const constraints = {
   video: {
     width: { ideal: 1280 },
     height: { ideal: 720 },
     frameRate: { ideal: 30 },
-    facingMode: { ideal: "environment" },
+    facingMode: { ideal: facing },
   },
   audio: false,
 };
