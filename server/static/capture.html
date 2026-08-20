@@ -38,6 +38,27 @@
       height: 100%;
     }
     #video-wrap { aspect-ratio: 9 / 12; }
+
+    /* Landscape (phone rotated sideways): video beside controls instead of stacked */
+    @media (orientation: landscape) and (max-height: 600px) {
+      body {
+        display: flex;
+        align-items: flex-start;
+        gap: 1em;
+        padding: 0.75em;
+      }
+      #video-wrap {
+        flex: 1 1 60%;
+        aspect-ratio: 16 / 9;
+        max-height: calc(100vh - 1.5em);
+      }
+      .side-panel {
+        flex: 1 1 35%;
+        max-height: calc(100vh - 1.5em);
+        overflow-y: auto;
+      }
+      #camera-settings { margin-top: 0; flex-direction: column; }
+    }
     .overlay-row {
       position: relative;
       z-index: 1;
@@ -196,31 +217,33 @@
       <button id="record-toggle" type="button">● Iniciar gravação</button>
     </div>
   </div>
-  <div id="camera-settings">
-    <div class="settings-field">
-      <label for="camera-device">📷 Câmera</label>
-      <select id="camera-device"></select>
+  <div class="side-panel">
+    <div id="camera-settings">
+      <div class="settings-field">
+        <label for="camera-device">📷 Câmera</label>
+        <select id="camera-device"></select>
+      </div>
+      <div class="settings-field">
+        <label for="quality-select">🎞️ Qualidade</label>
+        <select id="quality-select">
+          <option value="hd30">HD · 30fps</option>
+          <option value="hd60">HD · 60fps</option>
+          <option value="fhd30">FHD · 30fps</option>
+          <option value="fhd60">FHD · 60fps</option>
+        </select>
+      </div>
     </div>
-    <div class="settings-field">
-      <label for="quality-select">🎞️ Qualidade</label>
-      <select id="quality-select">
-        <option value="hd30">HD · 30fps</option>
-        <option value="hd60">HD · 60fps</option>
-        <option value="fhd30">FHD · 30fps</option>
-        <option value="fhd60">FHD · 60fps</option>
-      </select>
-    </div>
+    <button id="lance-button" type="button" hidden>⚡ Lance</button>
+    <div id="lance-toast"></div>
+    <div id="save-toast"></div>
+    <details>
+      <summary>⚙ detalhes técnicos</summary>
+      <div id="status">iniciando...</div>
+      <div id="stats"></div>
+      <div id="save-path"></div>
+    </details>
+    <a class="back-link" href="cameras.html">&larr; voltar ao menu</a>
   </div>
-  <button id="lance-button" type="button" hidden>⚡ Lance</button>
-  <div id="lance-toast"></div>
-  <div id="save-toast"></div>
-  <details>
-    <summary>⚙ detalhes técnicos</summary>
-    <div id="status">iniciando...</div>
-    <div id="stats"></div>
-    <div id="save-path"></div>
-  </details>
-  <a class="back-link" href="cameras.html">&larr; voltar ao menu</a>
   <script src="client.js?v=15"></script>
 </body>
 </html>
