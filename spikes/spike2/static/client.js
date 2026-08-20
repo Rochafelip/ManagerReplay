@@ -7,7 +7,12 @@ document.getElementById("mode-label").textContent = mode;
 document.getElementById("camera-label").textContent = cameraId;
 
 const constraints = {
-  video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
+  video: {
+    width: { ideal: 1280 },
+    height: { ideal: 720 },
+    frameRate: { ideal: 30 },
+    facingMode: { ideal: "environment" },
+  },
   audio: false,
 };
 
