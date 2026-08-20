@@ -426,7 +426,7 @@ from pathlib import Path
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="HighlightBox Spike 2 test server")
+    parser = argparse.ArgumentParser(description="ManagerReplay Spike 2 test server")
     parser.add_argument("--mode", choices=["chunks", "webrtc"], required=True)
     parser.add_argument("--cameras", type=int, choices=[1, 2], required=True)
     parser.add_argument("--cert", required=True, help="Path to mkcert-generated cert file")
@@ -494,7 +494,7 @@ git commit -m "feat(spike2): add CLI entrypoint dispatching chunks/webrtc modes"
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>HighlightBox Spike 2</title>
+  <title>ManagerReplay Spike 2</title>
 </head>
 <body>
   <h1>Spike 2 — câmera de teste</h1>
@@ -656,7 +656,7 @@ Pré-requisitos:
 - Código já sincronizado e venv pronta na Pi (Task 6 do plano).
 - Certificado mkcert do Spike 1 disponível na Pi (ex: `~/spike1/192.168.4.1.pem` e `~/spike1/192.168.4.1-key.pem` — ajustar caminho conforme o Spike 1 real).
 - 2 celulares Android, ambos na rede do hotspot do Pi.
-- Hotspot do Pi em modo aberto: `nmcli device wifi hotspot ifname wlan0 ssid HighlightBox-Test`.
+- Hotspot do Pi em modo aberto: `nmcli device wifi hotspot ifname wlan0 ssid ManagerReplay-Test`.
 - `monitor.sh`/`monitor2.sh` já presentes no home da Pi (conforme checkpoint do `ContextoProjeto.md`).
 
 Diretório de resultados na Pi:

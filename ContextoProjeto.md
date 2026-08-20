@@ -1,10 +1,10 @@
-# Contexto do Projeto — HighlightBox
+# Contexto do Projeto — ManagerReplay
 
 > Documento de contexto para uso com assistentes de IA de desenvolvimento (ex: Claude Code, Cursor, etc). Cole este arquivo inteiro como contexto inicial ao começar a trabalhar no código do projeto.
 
 ## 1. O que é o projeto
 
-HighlightBox é um sistema portátil de gravação de partidas esportivas (futebol, vôlei, etc.) que usa os celulares dos próprios jogadores como câmeras, sem depender de câmeras esportivas dedicadas ou de internet. Qualquer jogador com Android ou iPhone conecta o celular numa rede Wi-Fi local e vira temporariamente uma câmera do jogo.
+ManagerReplay é um sistema portátil de gravação de partidas esportivas (futebol, vôlei, etc.) que usa os celulares dos próprios jogadores como câmeras, sem depender de câmeras esportivas dedicadas ou de internet. Qualquer jogador com Android ou iPhone conecta o celular numa rede Wi-Fi local e vira temporariamente uma câmera do jogo.
 
 O servidor central roda num **Raspberry Pi 3 Model B** (hardware já em posse do time, 1GB RAM, quad-core ARM Cortex-A53 1.2GHz, Wi-Fi 2.4GHz apenas, sem USB 3.0). Ele é responsável por: criar a rede Wi-Fi local, hospedar a aplicação web, gerar QR Codes para conectar câmeras, receber e gravar os streams de vídeo, registrar eventos/momentos do jogo, e gerar highlights.
 

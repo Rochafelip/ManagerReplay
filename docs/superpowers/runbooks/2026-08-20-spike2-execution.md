@@ -4,7 +4,7 @@ Pré-requisitos:
 - Código já sincronizado e venv pronta na Pi (Task 6 do plano).
 - Certificado mkcert do Spike 1 disponível na Pi (ex: `~/spike1/192.168.4.1.pem` e `~/spike1/192.168.4.1-key.pem` — ajustar caminho conforme o Spike 1 real).
 - 2 celulares Android, ambos na rede do hotspot do Pi.
-- Hotspot do Pi em modo aberto: `nmcli device wifi hotspot ifname wlan0 ssid HighlightBox-Test`.
+- Hotspot do Pi em modo aberto: `nmcli device wifi hotspot ifname wlan0 ssid ManagerReplay-Test`.
 - `monitor.sh`/`monitor2.sh` já presentes no home da Pi (conforme checkpoint do `ContextoProjeto.md`).
 
 Deploy do código (rodar na máquina dev, com acesso à rede do Pi):

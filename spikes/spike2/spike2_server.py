@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="HighlightBox Spike 2 test server")
+    parser = argparse.ArgumentParser(description="ManagerReplay Spike 2 test server")
     parser.add_argument("--mode", choices=["chunks", "webrtc"], required=True)
     parser.add_argument("--cameras", type=int, choices=[1, 2], required=True)
     parser.add_argument("--cert", required=True, help="Path to mkcert-generated cert file")

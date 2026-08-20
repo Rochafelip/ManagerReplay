@@ -2,7 +2,7 @@
 
 ## Contexto
 
-O Raspberry Pi 3B (1GB RAM, quad-core ARM Cortex-A53 1.2GHz, Wi-Fi 2.4GHz 802.11n) é o hub central do HighlightBox/ManagerReplay: ele cria a rede Wi-Fi local (hotspot), recebe os streams de vídeo dos celulares-câmera e grava em disco. O caso de uso mínimo viável do produto exige pelo menos 2 câmeras simultâneas. Não existe relato documentado de um Pi 3B recebendo múltiplos streams WebRTC 1080p simultâneos (Risco 2 do contexto do projeto), e o rádio Wi-Fi 2.4GHz pode saturar antes mesmo da CPU virar o gargalo (Risco 3).
+O Raspberry Pi 3B (1GB RAM, quad-core ARM Cortex-A53 1.2GHz, Wi-Fi 2.4GHz 802.11n) é o hub central do ManagerReplay: ele cria a rede Wi-Fi local (hotspot), recebe os streams de vídeo dos celulares-câmera e grava em disco. O caso de uso mínimo viável do produto exige pelo menos 2 câmeras simultâneas. Não existe relato documentado de um Pi 3B recebendo múltiplos streams WebRTC 1080p simultâneos (Risco 2 do contexto do projeto), e o rádio Wi-Fi 2.4GHz pode saturar antes mesmo da CPU virar o gargalo (Risco 3).
 
 Este spike responde uma pergunta binária por combinação testada: **o Pi 3B aguenta gravar N câmeras simultâneas, usando o método de transporte X, sem travar?** Não é a arquitetura de produção — é código descartável, focado em medir capacidade real de hardware antes de investir nas fases seguintes do roadmap (Fase 03 em diante).
 
