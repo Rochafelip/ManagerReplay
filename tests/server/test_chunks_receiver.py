@@ -96,6 +96,26 @@ def test_files_route_serves_recordings_from_storage_root(tmp_path: Path, self_si
         thread.join(timeout=2)
 
 
+def test_files_html_page_is_served_from_static_dir_not_storage_root(tmp_path: Path, self_signed_cert):
+    cert_path, key_path = self_signed_cert
+    static_dir = tmp_path / "static"
+    static_dir.mkdir()
+    (static_dir / "files.html").write_text("<html>explorer page</html>")
+
+    server, thread, port = _start_server(tmp_path, cert_path, key_path)
+
+    try:
+        conn = _https_connection(port)
+        conn.request("GET", "/files.html")
+        response = conn.getresponse()
+        body = response.read()
+        assert response.status == 200
+        assert body == b"<html>explorer page</html>"
+    finally:
+        server.shutdown()
+        thread.join(timeout=2)
+
+
 def test_events_route_records_lance_and_returns_it(tmp_path: Path, self_signed_cert):
     cert_path, key_path = self_signed_cert
     server, thread, port = _start_server(tmp_path, cert_path, key_path)

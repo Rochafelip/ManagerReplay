@@ -16,7 +16,7 @@ class ChunksUploadHandler(SimpleHTTPRequestHandler):
     events_file: Path = None
 
     def translate_path(self, path):
-        if path.startswith("/files"):
+        if path.startswith("/files/") or path == "/files":
             original_directory = self.directory
             self.directory = str(self.storage_root)
             try:
