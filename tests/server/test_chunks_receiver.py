@@ -73,7 +73,7 @@ def test_chunks_receiver_writes_posted_chunk_to_disk(tmp_path: Path, self_signed
         server.shutdown()
         thread.join(timeout=2)
 
-    written = storage_root / "camera-1" / "2026-08-20T18-32-10_parte1.webm"
+    written = storage_root / "2026-08-20" / "camera1_2026-08-20T18-32-10_parte1.webm"
     assert written.read_bytes() == b"fake-video-bytes"
 
 

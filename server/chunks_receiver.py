@@ -8,7 +8,7 @@ from urllib.parse import parse_qs, urlparse
 from server.events import record_event
 from server.file_listing import list_directory
 from server.monitor_status import get_disk_usage, read_latest_status
-from server.storage import build_camera_dir, save_chunk
+from server.storage import build_day_dir, save_chunk
 
 
 class ChunksUploadHandler(SimpleHTTPRequestHandler):
@@ -95,8 +95,8 @@ class ChunksUploadHandler(SimpleHTTPRequestHandler):
         length = int(self.headers.get("Content-Length", 0))
         data = self.rfile.read(length)
 
-        camera_dir = build_camera_dir(self.storage_root, camera_id)
-        save_chunk(camera_dir, session_id, part_number, data)
+        day_dir = build_day_dir(self.storage_root, session_id)
+        save_chunk(day_dir, camera_id, session_id, part_number, data)
 
         self.send_response(204)
         self.end_headers()

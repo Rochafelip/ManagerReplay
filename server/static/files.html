@@ -88,6 +88,15 @@
       breadcrumbEl.innerHTML = html;
     }
 
+    const DAY_FOLDER_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+    function formatFolderLabel(name) {
+      const match = name.match(DAY_FOLDER_PATTERN);
+      if (!match) return `📁 ${name}`;
+      const [, year, month, day] = match;
+      return `📅 Replay do dia ${day}/${month}/${year}`;
+    }
+
     function renderEntry(entry) {
       const childPath = currentPath ? `${currentPath}/${entry.name}` : entry.name;
       if (entry.is_dir) {
@@ -96,7 +105,7 @@
         a.href = `files.html?path=${encodeURIComponent(childPath)}`;
         a.innerHTML = `
           <div>
-            <div class="entry-name">📁 ${entry.name}</div>
+            <div class="entry-name">${formatFolderLabel(entry.name)}</div>
             <div class="entry-meta">pasta</div>
           </div>
           <div class="entry-chevron">›</div>
