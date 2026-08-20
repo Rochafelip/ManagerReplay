@@ -4,15 +4,28 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>HighlightBox Spike 2</title>
+  <style>
+    body { font-family: sans-serif; padding: 1em; }
+    a.camera-link {
+      display: block;
+      padding: 1em;
+      margin: 0.5em 0;
+      background: #2563eb;
+      color: white;
+      text-decoration: none;
+      border-radius: 8px;
+      font-size: 1.2em;
+      text-align: center;
+    }
+  </style>
 </head>
 <body>
-  <h1>Spike 2 — câmera de teste</h1>
-  <p>Modo: <span id="mode-label"></span> · Câmera: <span id="camera-label"></span></p>
-  <p id="status">iniciando...</p>
-  <p id="stats"></p>
-  <p id="save-path" style="font-size: 0.85em; color: #555;"></p>
-  <video id="preview" autoplay playsinline muted style="width: 100%; max-width: 480px;"></video>
-  <button id="switch-camera" type="button">Trocar câmera</button>
-  <script src="client.js?v=3"></script>
+  <h1>Spike 2 — escolha a câmera</h1>
+  <p>Modo chunks:</p>
+  <a class="camera-link" href="capture.html?mode=chunks&camera=1">Câmera 1 (chunks)</a>
+  <a class="camera-link" href="capture.html?mode=chunks&camera=2">Câmera 2 (chunks)</a>
+  <p>Modo WebRTC:</p>
+  <a class="camera-link" href="capture.html?mode=webrtc&camera=1">Câmera 1 (webrtc)</a>
+  <a class="camera-link" href="capture.html?mode=webrtc&camera=2">Câmera 2 (webrtc)</a>
 </body>
 </html>
