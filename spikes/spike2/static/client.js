@@ -4,8 +4,36 @@ const cameraId = params.get("camera") || "1";
 const facing = params.get("facing") || "environment";
 
 const statusEl = document.getElementById("status");
+const statsEl = document.getElementById("stats");
+const pathEl = document.getElementById("save-path");
 document.getElementById("mode-label").textContent = mode;
 document.getElementById("camera-label").textContent = cameraId;
+pathEl.textContent = `Salvando na Pi em: ~/highlightbox-spike2/${mode}/<n-cameras>/camera-${cameraId}/`;
+
+const startedAt = Date.now();
+let totalBytesSent = 0;
+let chunksSent = 0;
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function formatElapsed(ms) {
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function updateStats() {
+  const elapsed = formatElapsed(Date.now() - startedAt);
+  statsEl.textContent = `Tempo gravado: ${elapsed} · Chunks enviados: ${chunksSent} · Total enviado: ${formatBytes(totalBytesSent)}`;
+}
+
+setInterval(updateStats, 1000);
+updateStats();
 
 document.getElementById("switch-camera").addEventListener("click", () => {
   const nextFacing = facing === "environment" ? "user" : "environment";
@@ -35,7 +63,10 @@ async function startChunksMode(stream) {
       method: "POST",
       body: event.data,
     });
-    statusEl.textContent = `chunks: enviado chunk ${seq} (${event.data.size} bytes)`;
+    totalBytesSent += event.data.size;
+    chunksSent += 1;
+    statusEl.textContent = `chunks: enviado chunk ${seq} (${formatBytes(event.data.size)})`;
+    updateStats();
   };
 
   recorder.start(7000);
