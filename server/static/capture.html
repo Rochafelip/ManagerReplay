@@ -48,6 +48,7 @@
       padding: 6px 10px;
       border-radius: 8px;
     }
+    #rec-badge[hidden] { display: none; }
     #operator-badge {
       display: inline-flex;
       align-items: center;
@@ -89,8 +90,26 @@
       font-size: 0.85em;
       max-width: 55%;
     }
-    #lance-button {
+    #record-toggle {
       flex-shrink: 0;
+      padding: 14px 24px;
+      font-size: 1.15em;
+      font-weight: 700;
+      border: none;
+      border-radius: 50px;
+      background: #16a34a;
+      color: #fff;
+    }
+    #record-toggle:active { background: #15803d; }
+    #record-toggle.recording {
+      background: #dc2626;
+      color: #fff;
+    }
+    #record-toggle.recording:active { background: #b91c1c; }
+    #lance-button {
+      display: block;
+      width: 100%;
+      margin-top: 0.75em;
       padding: 14px 24px;
       font-size: 1.15em;
       font-weight: 700;
@@ -99,6 +118,7 @@
       background: #f59e0b;
       color: #111;
     }
+    #lance-button[hidden] { display: none; }
     #lance-button:active { background: #d97706; }
     #lance-button:disabled {
       background: #444;
@@ -109,16 +129,17 @@
       100% { box-shadow: inset 0 0 0 6px rgba(245, 158, 11, 0); }
     }
     #video-wrap.flash { animation: flash-pulse 0.5s ease-out; }
-    #lance-toast {
+    #lance-toast, #save-toast {
       text-align: center;
       margin-top: 0.6em;
       font-weight: 600;
-      color: #f59e0b;
       min-height: 1.2em;
       opacity: 0;
       transition: opacity 0.3s;
     }
-    #lance-toast.visible { opacity: 1; }
+    #lance-toast { color: #f59e0b; }
+    #save-toast { color: #4ade80; }
+    #lance-toast.visible, #save-toast.visible { opacity: 1; }
     details {
       margin-top: 0.75em;
       background: #1e1e1e;
@@ -144,16 +165,18 @@
   <div id="video-wrap">
     <video id="preview" autoplay playsinline muted></video>
     <div class="overlay-row">
-      <span id="rec-badge"><span class="dot"></span> gravando · <span id="elapsed">00:00</span></span>
+      <span id="rec-badge" hidden><span class="dot"></span> gravando · <span id="elapsed">00:00</span></span>
       <br />
       <span id="operator-badge" hidden>🎥 <span id="operator-name"></span></span>
     </div>
     <div class="overlay-row bottom-controls">
       <select id="camera-device"></select>
-      <button id="lance-button" type="button">⚡ Lance</button>
+      <button id="record-toggle" type="button">● Iniciar gravação</button>
     </div>
   </div>
+  <button id="lance-button" type="button" hidden>⚡ Lance</button>
   <div id="lance-toast"></div>
+  <div id="save-toast"></div>
   <details>
     <summary>⚙ detalhes técnicos</summary>
     <div id="status">iniciando...</div>
@@ -161,6 +184,6 @@
     <div id="save-path"></div>
   </details>
   <a class="back-link" href="cameras.html">&larr; voltar ao menu</a>
-  <script src="client.js?v=11"></script>
+  <script src="client.js?v=12"></script>
 </body>
 </html>

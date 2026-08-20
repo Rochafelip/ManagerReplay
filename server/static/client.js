@@ -16,14 +16,17 @@ if (operatorName) {
   document.getElementById("operator-badge").hidden = false;
 }
 
-const startedAt = Date.now();
 let totalBytesSent = 0;
 let chunksSent = 0;
+let startedAt = null;
+let statsTimer = null;
 
 const LANCE_MIN_MS = 30000;
 const lanceButtonEl = document.getElementById("lance-button");
-lanceButtonEl.disabled = true;
-lanceButtonEl.textContent = "⚡ Lance em 30s";
+const recordToggleEl = document.getElementById("record-toggle");
+const recBadgeEl = document.getElementById("rec-badge");
+const deviceSelectEl = document.getElementById("camera-device");
+const saveToastEl = document.getElementById("save-toast");
 
 function formatBytes(bytes) {
   if (bytes < 1024) return `${bytes} B`;
@@ -53,9 +56,6 @@ function updateStats() {
     lanceButtonEl.textContent = `⚡ Lance em ${remaining}s`;
   }
 }
-
-setInterval(updateStats, 1000);
-updateStats();
 
 const constraints = {
   video: deviceId
@@ -116,26 +116,81 @@ async function populateDeviceSelect(activeStream) {
   });
 }
 
-async function startChunksMode(stream) {
-  const recorder = new MediaRecorder(stream, { mimeType: "video/webm;codecs=vp8" });
+let mediaStream = null;
+let recorder = null;
+let lastUploadPromise = Promise.resolve();
+
+function beginRecording() {
+  totalBytesSent = 0;
+  chunksSent = 0;
+  startedAt = Date.now();
+  lastUploadPromise = Promise.resolve();
+
+  recorder = new MediaRecorder(mediaStream, { mimeType: "video/webm;codecs=vp8" });
   const sessionId = new Date().toISOString().replace(/[:.]/g, "-");
   let partNumber = 1;
 
-  recorder.ondataavailable = async (event) => {
+  recorder.ondataavailable = (event) => {
     if (event.data.size === 0) return;
     const part = partNumber++;
-    await fetch(`/upload?camera=${cameraId}&session=${sessionId}&part=${part}`, {
-      method: "POST",
-      body: event.data,
+    lastUploadPromise = lastUploadPromise.then(async () => {
+      await fetch(`/upload?camera=${cameraId}&session=${sessionId}&part=${part}`, {
+        method: "POST",
+        body: event.data,
+      });
+      totalBytesSent += event.data.size;
+      chunksSent += 1;
+      statusEl.textContent = `chunks: enviado parte ${part} (${formatBytes(event.data.size)})`;
+      updateStats();
     });
-    totalBytesSent += event.data.size;
-    chunksSent += 1;
-    statusEl.textContent = `chunks: enviado parte ${part} (${formatBytes(event.data.size)})`;
-    updateStats();
   };
 
   recorder.start(30000);
+
+  recBadgeEl.hidden = false;
+  deviceSelectEl.disabled = true;
+  recordToggleEl.textContent = "■ Parar gravação";
+  recordToggleEl.classList.add("recording");
+  lanceButtonEl.hidden = false;
+  lanceButtonEl.disabled = true;
+  lanceButtonEl.textContent = "⚡ Lance em 30s";
+  statsTimer = setInterval(updateStats, 1000);
+  updateStats();
 }
+
+function showSavedToast() {
+  saveToastEl.textContent = "✅ Gravação salva no app";
+  saveToastEl.classList.add("visible");
+  setTimeout(() => saveToastEl.classList.remove("visible"), 3000);
+}
+
+async function endRecording() {
+  recordToggleEl.disabled = true;
+  const stopped = new Promise((resolve) => {
+    recorder.onstop = resolve;
+  });
+  recorder.stop();
+  await stopped;
+  await lastUploadPromise;
+
+  clearInterval(statsTimer);
+  recBadgeEl.hidden = true;
+  deviceSelectEl.disabled = false;
+  lanceButtonEl.hidden = true;
+  recordToggleEl.textContent = "● Iniciar gravação";
+  recordToggleEl.classList.remove("recording");
+  recordToggleEl.disabled = false;
+  statusEl.textContent = "pronto pra gravar";
+  showSavedToast();
+}
+
+recordToggleEl.addEventListener("click", () => {
+  if (recorder && recorder.state === "recording") {
+    endRecording();
+  } else {
+    beginRecording();
+  }
+});
 
 let wakeLock = null;
 
@@ -157,10 +212,10 @@ document.addEventListener("visibilitychange", () => {
 async function start() {
   await requestWakeLock();
 
-  const stream = await navigator.mediaDevices.getUserMedia(constraints);
-  document.getElementById("preview").srcObject = stream;
-  await populateDeviceSelect(stream);
-  await startChunksMode(stream);
+  mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+  document.getElementById("preview").srcObject = mediaStream;
+  await populateDeviceSelect(mediaStream);
+  statusEl.textContent = "pronto pra gravar";
 }
 
 const lanceToastEl = document.getElementById("lance-toast");
