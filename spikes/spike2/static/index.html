@@ -2,10 +2,26 @@
 <html lang="pt-br">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>HighlightBox Spike 2</title>
   <style>
-    body { font-family: sans-serif; padding: 1em; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, system-ui, sans-serif;
+      background: #111;
+      color: #eee;
+      margin: 0;
+      padding: 1.5em 1em;
+      min-height: 100vh;
+    }
+    h1 { font-size: 1.2em; margin: 0 0 1em; }
+    h2 {
+      font-size: 0.85em;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #999;
+      margin: 1.2em 0 0.5em;
+    }
     a.camera-link {
       display: block;
       padding: 1em;
@@ -13,19 +29,21 @@
       background: #2563eb;
       color: white;
       text-decoration: none;
-      border-radius: 8px;
-      font-size: 1.2em;
+      border-radius: 10px;
+      font-size: 1.15em;
+      font-weight: 600;
       text-align: center;
     }
+    a.camera-link:active { background: #1d4ed8; }
   </style>
 </head>
 <body>
-  <h1>Spike 2 — escolha a câmera</h1>
-  <p>Modo chunks:</p>
-  <a class="camera-link" href="capture.html?mode=chunks&camera=1">Câmera 1 (chunks)</a>
-  <a class="camera-link" href="capture.html?mode=chunks&camera=2">Câmera 2 (chunks)</a>
-  <p>Modo WebRTC:</p>
-  <a class="camera-link" href="capture.html?mode=webrtc&camera=1">Câmera 1 (webrtc)</a>
-  <a class="camera-link" href="capture.html?mode=webrtc&camera=2">Câmera 2 (webrtc)</a>
+  <h1>HighlightBox Spike 2 — escolha a câmera</h1>
+  <h2>Modo chunks</h2>
+  <a class="camera-link" href="capture.html?mode=chunks&camera=1">Câmera 1</a>
+  <a class="camera-link" href="capture.html?mode=chunks&camera=2">Câmera 2</a>
+  <h2>Modo WebRTC</h2>
+  <a class="camera-link" href="capture.html?mode=webrtc&camera=1">Câmera 1</a>
+  <a class="camera-link" href="capture.html?mode=webrtc&camera=2">Câmera 2</a>
 </body>
 </html>

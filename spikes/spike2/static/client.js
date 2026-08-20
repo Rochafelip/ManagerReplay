@@ -92,7 +92,26 @@ async function startWebrtcMode(stream) {
   };
 }
 
+let wakeLock = null;
+
+async function requestWakeLock() {
+  if (!("wakeLock" in navigator)) return;
+  try {
+    wakeLock = await navigator.wakeLock.request("screen");
+  } catch (err) {
+    console.error("wake lock failed:", err);
+  }
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    requestWakeLock();
+  }
+});
+
 async function start() {
+  await requestWakeLock();
+
   const stream = await navigator.mediaDevices.getUserMedia(constraints);
   document.getElementById("preview").srcObject = stream;
 
