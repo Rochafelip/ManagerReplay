@@ -11,6 +11,16 @@ class ChunksUploadHandler(SimpleHTTPRequestHandler):
     storage_root: Path = None
     n_cameras: int = 1
 
+    def translate_path(self, path):
+        if path.startswith("/files"):
+            original_directory = self.directory
+            self.directory = str(self.storage_root)
+            try:
+                return super().translate_path(path[len("/files"):] or "/")
+            finally:
+                self.directory = original_directory
+        return super().translate_path(path)
+
     def do_POST(self):
         if not self.path.startswith("/upload"):
             self.send_response(404)

@@ -66,6 +66,7 @@ def run(
     app["storage_root"] = storage_root
     app["n_cameras"] = n_cameras
     app.router.add_post("/offer/{camera_id}", _handle_offer)
+    app.router.add_static("/files/", path=str(storage_root), name="files", show_index=True)
     app.router.add_static("/", path=str(static_dir), name="static")
     app.on_shutdown.append(_on_shutdown)
 

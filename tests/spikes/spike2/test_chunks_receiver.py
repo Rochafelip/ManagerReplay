@@ -60,3 +60,41 @@ def test_chunks_receiver_writes_posted_chunk_to_disk(tmp_path: Path, self_signed
 
     written = storage_root / "chunks" / "2" / "camera-1" / "chunk-0003.webm"
     assert written.read_bytes() == b"fake-video-bytes"
+
+
+def test_files_route_serves_recordings_from_storage_root(tmp_path: Path, self_signed_cert):
+    cert_path, key_path = self_signed_cert
+    storage_root = tmp_path / "storage"
+    static_dir = tmp_path / "static"
+    static_dir.mkdir()
+    camera_dir = storage_root / "chunks" / "1" / "camera-1"
+    camera_dir.mkdir(parents=True)
+    (camera_dir / "chunk-0000.webm").write_bytes(b"video-bytes")
+
+    server = chunks_receiver.build_server(
+        storage_root=storage_root,
+        n_cameras=1,
+        static_dir=static_dir,
+        cert_path=cert_path,
+        key_path=key_path,
+        host="127.0.0.1",
+        port=0,
+    )
+    port = server.server_address[1]
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    time.sleep(0.2)
+
+    try:
+        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+        conn = http.client.HTTPSConnection("127.0.0.1", port, context=ssl_context)
+        conn.request("GET", "/files/chunks/1/camera-1/chunk-0000.webm")
+        response = conn.getresponse()
+        body = response.read()
+        assert response.status == 200
+        assert body == b"video-bytes"
+    finally:
+        server.shutdown()
+        thread.join(timeout=2)

@@ -14,36 +14,38 @@
       padding: 1.5em 1em;
       min-height: 100vh;
     }
-    h1 { font-size: 1.2em; margin: 0 0 1em; }
-    h2 {
-      font-size: 0.85em;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: #999;
-      margin: 1.2em 0 0.5em;
-    }
-    a.camera-link {
+    h1 { font-size: 1.2em; margin: 0 0 1.2em; }
+    a.menu-link {
       display: block;
-      padding: 1em;
+      padding: 1.2em;
       margin: 0.5em 0;
-      background: #2563eb;
+      background: #1e1e1e;
+      border: 1px solid #333;
       color: white;
       text-decoration: none;
-      border-radius: 10px;
+      border-radius: 12px;
       font-size: 1.15em;
       font-weight: 600;
-      text-align: center;
     }
-    a.camera-link:active { background: #1d4ed8; }
+    a.menu-link:active { background: #2a2a2a; }
+    a.menu-link small {
+      display: block;
+      font-weight: 400;
+      color: #999;
+      font-size: 0.75em;
+      margin-top: 0.3em;
+    }
   </style>
 </head>
 <body>
-  <h1>ManagerReplay Spike 2 — escolha a câmera</h1>
-  <h2>Modo chunks</h2>
-  <a class="camera-link" href="capture.html?mode=chunks&camera=1">Câmera 1</a>
-  <a class="camera-link" href="capture.html?mode=chunks&camera=2">Câmera 2</a>
-  <h2>Modo WebRTC</h2>
-  <a class="camera-link" href="capture.html?mode=webrtc&camera=1">Câmera 1</a>
-  <a class="camera-link" href="capture.html?mode=webrtc&camera=2">Câmera 2</a>
+  <h1>ManagerReplay Spike 2</h1>
+  <a class="menu-link" href="cameras.html">
+    📹 Câmeras
+    <small>Escolher câmera e modo pra gravar</small>
+  </a>
+  <a class="menu-link" href="/files/">
+    📁 Arquivos
+    <small>Ver e baixar as gravações salvas</small>
+  </a>
 </body>
 </html>
