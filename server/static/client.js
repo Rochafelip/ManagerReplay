@@ -95,7 +95,7 @@ async function startChunksMode(stream) {
     updateStats();
   };
 
-  recorder.start(7000);
+  recorder.start(30000);
 }
 
 async function startWebrtcMode(stream) {
