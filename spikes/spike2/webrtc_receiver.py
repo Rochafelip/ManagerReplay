@@ -1,0 +1,76 @@
+import ssl
+from pathlib import Path
+
+from aiohttp import web
+from aiortc import RTCPeerConnection, RTCSessionDescription
+from aiortc.contrib.media import MediaRecorder
+
+from spikes.spike2.storage import build_camera_dir
+
+_active_connections: set[RTCPeerConnection] = set()
+
+
+async def _handle_offer(request: web.Request) -> web.Response:
+    camera_id = int(request.match_info["camera_id"])
+    n_cameras: int = request.app["n_cameras"]
+    storage_root: Path = request.app["storage_root"]
+
+    params = await request.json()
+    offer = RTCSessionDescription(sdp=params["sdp"], type=params["type"])
+
+    pc = RTCPeerConnection()
+    _active_connections.add(pc)
+
+    camera_dir = build_camera_dir(storage_root, "webrtc", n_cameras, camera_id)
+    recorder = MediaRecorder(str(camera_dir / "recording.webm"))
+
+    @pc.on("track")
+    def on_track(track):
+        if track.kind == "video":
+            recorder.addTrack(track)
+
+    @pc.on("connectionstatechange")
+    async def on_connectionstatechange():
+        if pc.connectionState in ("failed", "closed"):
+            await recorder.stop()
+            await pc.close()
+            _active_connections.discard(pc)
+
+    await pc.setRemoteDescription(offer)
+    await recorder.start()
+
+    answer = await pc.createAnswer()
+    await pc.setLocalDescription(answer)
+
+    return web.json_response({"sdp": pc.localDescription.sdp, "type": pc.localDescription.type})
+
+
+async def _on_shutdown(app: web.Application):
+    for pc in list(_active_connections):
+        await pc.close()
+    _active_connections.clear()
+
+
+def run(
+    storage_root: Path,
+    n_cameras: int,
+    static_dir: Path,
+    cert_path: Path,
+    key_path: Path,
+    host: str = "0.0.0.0",
+    port: int = 8443,
+):
+    storage_root.mkdir(parents=True, exist_ok=True)
+
+    app = web.Application()
+    app["storage_root"] = storage_root
+    app["n_cameras"] = n_cameras
+    app.router.add_post("/offer/{camera_id}", _handle_offer)
+    app.router.add_static("/", path=str(static_dir), name="static")
+    app.on_shutdown.append(_on_shutdown)
+
+    ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    ssl_context.load_cert_chain(certfile=str(cert_path), keyfile=str(key_path))
+
+    print(f"[webrtc] listening on https://{host}:{port}, storage={storage_root}")
+    web.run_app(app, host=host, port=port, ssl_context=ssl_context)
