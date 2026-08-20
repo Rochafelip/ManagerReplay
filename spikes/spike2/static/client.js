@@ -2,6 +2,7 @@ const params = new URLSearchParams(window.location.search);
 const mode = params.get("mode") || "chunks";
 const cameraId = params.get("camera") || "1";
 const facing = params.get("facing") || "environment";
+const deviceId = params.get("device") || null;
 
 const statusEl = document.getElementById("status");
 const statsEl = document.getElementById("stats");
@@ -35,22 +36,47 @@ function updateStats() {
 setInterval(updateStats, 1000);
 updateStats();
 
-document.getElementById("switch-camera").addEventListener("click", () => {
-  const nextFacing = facing === "environment" ? "user" : "environment";
-  const nextUrl = new URL(window.location.href);
-  nextUrl.searchParams.set("facing", nextFacing);
-  window.location.href = nextUrl.toString();
-});
-
 const constraints = {
-  video: {
-    width: { ideal: 1280 },
-    height: { ideal: 720 },
-    frameRate: { ideal: 30 },
-    facingMode: { ideal: facing },
-  },
+  video: deviceId
+    ? {
+        deviceId: { exact: deviceId },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        frameRate: { ideal: 30 },
+      }
+    : {
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        frameRate: { ideal: 30 },
+        facingMode: { ideal: facing },
+      },
   audio: false,
 };
+
+async function populateDeviceSelect(activeStream) {
+  const select = document.getElementById("camera-device");
+  const devices = await navigator.mediaDevices.enumerateDevices();
+  const videoDevices = devices.filter((d) => d.kind === "videoinput");
+
+  const activeTrack = activeStream.getVideoTracks()[0];
+  const activeDeviceId = activeTrack ? activeTrack.getSettings().deviceId : null;
+
+  select.innerHTML = "";
+  videoDevices.forEach((device, index) => {
+    const option = document.createElement("option");
+    option.value = device.deviceId;
+    option.textContent = device.label || `Câmera ${index + 1}`;
+    if (device.deviceId === activeDeviceId) option.selected = true;
+    select.appendChild(option);
+  });
+
+  select.addEventListener("change", () => {
+    const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.set("device", select.value);
+    nextUrl.searchParams.delete("facing");
+    window.location.href = nextUrl.toString();
+  });
+}
 
 async function startChunksMode(stream) {
   const recorder = new MediaRecorder(stream, { mimeType: "video/webm;codecs=vp8" });
@@ -114,6 +140,7 @@ async function start() {
 
   const stream = await navigator.mediaDevices.getUserMedia(constraints);
   document.getElementById("preview").srcObject = stream;
+  await populateDeviceSelect(stream);
 
   if (mode === "chunks") {
     await startChunksMode(stream);

@@ -53,7 +53,7 @@
     }
     #save-path { font-size: 0.8em; color: #999; word-break: break-all; }
     #status { color: #4ade80; font-weight: 600; }
-    button {
+    select {
       width: 100%;
       padding: 1em;
       margin-top: 0.75em;
@@ -64,7 +64,6 @@
       background: #2563eb;
       color: white;
     }
-    button:active { background: #1d4ed8; }
     a.back-link {
       display: inline-block;
       margin-top: 0.75em;
@@ -86,8 +85,8 @@
     <div id="stats"></div>
     <div id="save-path"></div>
   </div>
-  <button id="switch-camera" type="button">Trocar câmera</button>
+  <select id="camera-device"></select>
   <a class="back-link" href="index.html">&larr; voltar ao menu</a>
-  <script src="client.js?v=4"></script>
+  <script src="client.js?v=5"></script>
 </body>
 </html>
