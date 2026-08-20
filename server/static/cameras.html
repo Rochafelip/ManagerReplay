@@ -67,8 +67,8 @@
 
   <div id="camera-step">
     <label>Qual câmera você vai usar?</label>
-    <a class="camera-link" id="camera-1-link" href="#">📹 Câmera 1</a>
-    <a class="camera-link" id="camera-2-link" href="#">📹 Câmera 2</a>
+    <a class="camera-link" id="camera-1-link" href="#">📹 Câmera 1 — Traseira</a>
+    <a class="camera-link" id="camera-2-link" href="#">📹 Câmera 2 — Frontal</a>
   </div>
 
   <script>
@@ -82,8 +82,8 @@
 
     function updateLinks(name) {
       const encoded = encodeURIComponent(name.trim());
-      cameraLinks[1].href = `capture.html?mode=chunks&camera=1&name=${encoded}`;
-      cameraLinks[2].href = `capture.html?mode=chunks&camera=2&name=${encoded}`;
+      cameraLinks[1].href = `capture.html?mode=chunks&camera=1&facing=environment&name=${encoded}`;
+      cameraLinks[2].href = `capture.html?mode=chunks&camera=2&facing=user&name=${encoded}`;
     }
 
     function onNameChange() {

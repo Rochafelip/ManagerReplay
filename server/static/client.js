@@ -74,16 +74,34 @@ const constraints = {
   audio: false,
 };
 
+const FACING_LABEL_HINTS = {
+  environment: ["back", "traseira", "rear", "environment"],
+  user: ["front", "frontal", "user", "selfie"],
+};
+
+function matchesFacing(label, targetFacing) {
+  const hints = FACING_LABEL_HINTS[targetFacing] || [];
+  const lower = label.toLowerCase();
+  return hints.some((hint) => lower.includes(hint));
+}
+
 async function populateDeviceSelect(activeStream) {
   const select = document.getElementById("camera-device");
   const devices = await navigator.mediaDevices.enumerateDevices();
   const videoDevices = devices.filter((d) => d.kind === "videoinput");
 
+  // Restrict the list to the side (frontal/traseira) this camera slot is locked to.
+  // Labels are only reliably available once permission is granted, which is
+  // already true here since activeStream exists; fall back to the full list
+  // if no device label matches (some browsers/devices don't expose hints).
+  const matching = videoDevices.filter((d) => matchesFacing(d.label, facing));
+  const relevantDevices = matching.length > 0 ? matching : videoDevices;
+
   const activeTrack = activeStream.getVideoTracks()[0];
   const activeDeviceId = activeTrack ? activeTrack.getSettings().deviceId : null;
 
   select.innerHTML = "";
-  videoDevices.forEach((device, index) => {
+  relevantDevices.forEach((device, index) => {
     const option = document.createElement("option");
     option.value = device.deviceId;
     option.textContent = device.label || `Câmera ${index + 1}`;
@@ -94,7 +112,6 @@ async function populateDeviceSelect(activeStream) {
   select.addEventListener("change", () => {
     const nextUrl = new URL(window.location.href);
     nextUrl.searchParams.set("device", select.value);
-    nextUrl.searchParams.delete("facing");
     window.location.href = nextUrl.toString();
   });
 }
