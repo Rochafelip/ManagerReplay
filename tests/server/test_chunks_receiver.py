@@ -155,6 +155,81 @@ def test_files_list_route_returns_directory_entries(tmp_path: Path, self_signed_
         thread.join(timeout=2)
 
 
+def test_session_start_then_recording_status_lists_it(tmp_path: Path, self_signed_cert):
+    cert_path, key_path = self_signed_cert
+    server, thread, port = _start_server(tmp_path, cert_path, key_path)
+
+    try:
+        conn = _https_connection(port)
+        conn.request("POST", "/session-start?camera=1&name=Carlos&quality=hd30")
+        start_response = conn.getresponse()
+        start_response.read()
+        assert start_response.status == 204
+
+        conn = _https_connection(port)
+        conn.request("GET", "/recording-status")
+        response = conn.getresponse()
+        body = json.loads(response.read())
+        assert response.status == 200
+        assert len(body) == 1
+        assert body[0]["camera"] == 1
+        assert body[0]["name"] == "Carlos"
+        assert body[0]["quality"] == "hd30"
+        assert body[0]["chunks_received"] == 0
+        assert body[0]["seconds_since_last_chunk"] is None
+    finally:
+        server.shutdown()
+        thread.join(timeout=2)
+
+
+def test_session_stop_removes_it_from_recording_status(tmp_path: Path, self_signed_cert):
+    cert_path, key_path = self_signed_cert
+    server, thread, port = _start_server(tmp_path, cert_path, key_path)
+
+    try:
+        conn = _https_connection(port)
+        conn.request("POST", "/session-start?camera=1&name=Carlos&quality=hd30")
+        conn.getresponse().read()
+
+        conn = _https_connection(port)
+        conn.request("POST", "/session-stop?camera=1")
+        stop_response = conn.getresponse()
+        stop_response.read()
+        assert stop_response.status == 204
+
+        conn = _https_connection(port)
+        conn.request("GET", "/recording-status")
+        body = json.loads(conn.getresponse().read())
+        assert body == []
+    finally:
+        server.shutdown()
+        thread.join(timeout=2)
+
+
+def test_upload_updates_chunk_count_for_active_session(tmp_path: Path, self_signed_cert):
+    cert_path, key_path = self_signed_cert
+    server, thread, port = _start_server(tmp_path, cert_path, key_path)
+
+    try:
+        conn = _https_connection(port)
+        conn.request("POST", "/session-start?camera=1&name=Carlos&quality=hd30")
+        conn.getresponse().read()
+
+        conn = _https_connection(port)
+        conn.request("POST", "/upload?camera=1&session=2026-08-20T18-32-10&part=1", body=b"fake-video-bytes")
+        conn.getresponse().read()
+
+        conn = _https_connection(port)
+        conn.request("GET", "/recording-status")
+        body = json.loads(conn.getresponse().read())
+        assert body[0]["chunks_received"] == 1
+        assert body[0]["bytes_received"] == len(b"fake-video-bytes")
+        assert body[0]["seconds_since_last_chunk"] == 0
+    finally:
+        server.shutdown()
+        thread.join(timeout=2)
+
+
 def test_monitor_status_route_returns_latest_row(tmp_path: Path, self_signed_cert):
     cert_path, key_path = self_signed_cert
     (tmp_path / "monitor.csv").write_text(

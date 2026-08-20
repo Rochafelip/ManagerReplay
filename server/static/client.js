@@ -182,6 +182,10 @@ function beginRecording() {
 
   recorder.start(30000);
 
+  fetch(`/session-start?camera=${cameraId}&name=${encodeURIComponent(operatorName)}&quality=${quality}`, {
+    method: "POST",
+  });
+
   qualitySelectEl.disabled = true;
   recBadgeEl.hidden = false;
   recordToggleEl.textContent = "■ Parar gravação";
@@ -207,6 +211,7 @@ async function endRecording() {
   recorder.stop();
   await stopped;
   await lastUploadPromise;
+  await fetch(`/session-stop?camera=${cameraId}`, { method: "POST" });
 
   clearInterval(statsTimer);
   qualitySelectEl.disabled = false;

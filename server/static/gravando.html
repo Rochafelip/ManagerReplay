@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icons/icon-32.png" sizes="32x32" type="image/png" />
+  <link rel="apple-touch-icon" href="icons/icon-180.png" />
+  <meta name="theme-color" content="#111827" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>ManagerReplay — Quem está gravando</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, system-ui, sans-serif;
+      background: #111;
+      color: #eee;
+      margin: 0;
+      padding: 1.5em 1em;
+      min-height: 100vh;
+    }
+    h1 { font-size: 1.2em; margin: 0 0 0.3em; }
+    .subtitle { color: #999; font-size: 0.85em; margin: 0 0 1.2em; }
+    .card {
+      background: #1e1e1e;
+      border-radius: 12px;
+      padding: 1em;
+      margin-bottom: 0.75em;
+    }
+    .card-top {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+    }
+    .card-name { font-size: 1.1em; font-weight: 700; }
+    .card-camera { color: #999; font-size: 0.85em; }
+    .card-elapsed {
+      font-size: 1.4em;
+      font-weight: 700;
+      color: #16a34a;
+      margin-top: 0.3em;
+    }
+    .card-meta {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 0.6em;
+      font-size: 0.85em;
+      color: #999;
+    }
+    .signal { font-weight: 600; }
+    .signal.ok { color: #4ade80; }
+    .signal.bad { color: #f87171; }
+    #empty { color: #999; text-align: center; padding: 2em 0; }
+    a.back-link {
+      display: inline-block;
+      margin-top: 1.5em;
+      color: #93c5fd;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎥 Quem está gravando</h1>
+  <p class="subtitle">Atualiza a cada 3s</p>
+
+  <div id="content"></div>
+  <a class="back-link" href="index.html">&larr; voltar ao menu</a>
+
+  <script>
+    const contentEl = document.getElementById("content");
+    const STALE_THRESHOLD_SECONDS = 30;
+
+    const QUALITY_LABELS = {
+      hd30: "HD · 30fps",
+      hd60: "HD · 60fps",
+      fhd30: "FHD · 30fps",
+      fhd60: "FHD · 60fps",
+    };
+
+    function formatElapsed(totalSeconds) {
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+    }
+
+    function formatBytes(bytes) {
+      if (bytes < 1024) return `${bytes} B`;
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+      return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+    }
+
+    function signalIndicator(session) {
+      if (session.seconds_since_last_chunk === null) {
+        return `<span class="signal ok">🟢 aguardando primeiro envio</span>`;
+      }
+      if (session.seconds_since_last_chunk >= STALE_THRESHOLD_SECONDS) {
+        return `<span class="signal bad">🔴 sem sinal há ${session.seconds_since_last_chunk}s</span>`;
+      }
+      return `<span class="signal ok">🟢 enviando</span>`;
+    }
+
+    function renderCard(session) {
+      const name = session.name || "(sem nome)";
+      const quality = QUALITY_LABELS[session.quality] || session.quality || "—";
+      return `
+        <div class="card">
+          <div class="card-top">
+            <span class="card-name">${name}</span>
+            <span class="card-camera">📹 Câmera ${session.camera}</span>
+          </div>
+          <div class="card-elapsed">${formatElapsed(session.elapsed_seconds)}</div>
+          <div class="card-meta">
+            <span>${quality} · ${formatBytes(session.bytes_received)} enviados</span>
+            ${signalIndicator(session)}
+          </div>
+        </div>
+      `;
+    }
+
+    function render(sessions) {
+      if (sessions.length === 0) {
+        contentEl.innerHTML = '<div id="empty">Ninguém gravando agora.</div>';
+        return;
+      }
+      contentEl.innerHTML = sessions.map(renderCard).join("");
+    }
+
+    async function poll() {
+      try {
+        const response = await fetch("/recording-status");
+        if (!response.ok) throw new Error("não foi possível ler o status");
+        const sessions = await response.json();
+        render(sessions);
+      } catch (err) {
+        contentEl.innerHTML = `<div id="empty">erro: ${err.message}</div>`;
+      }
+    }
+
+    poll();
+    setInterval(poll, 3000);
+  </script>
+</body>
+</html>

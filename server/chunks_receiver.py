@@ -1,5 +1,7 @@
 import json
 import ssl
+import threading
+import time
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -8,6 +10,7 @@ from urllib.parse import parse_qs, urlparse
 from server.events import record_event
 from server.file_listing import list_directory
 from server.monitor_status import get_disk_usage, read_latest_status
+from server.sessions import list_sessions, record_chunk, start_session, stop_session
 from server.storage import build_day_dir, save_chunk
 
 
@@ -16,6 +19,8 @@ class ChunksUploadHandler(SimpleHTTPRequestHandler):
     n_cameras: int = 1
     events_file: Path = None
     monitor_csv: Path = None
+    sessions_registry: dict = None
+    sessions_lock: threading.Lock = None
 
     def translate_path(self, path):
         if path.startswith("/files/") or path == "/files":
@@ -34,7 +39,21 @@ class ChunksUploadHandler(SimpleHTTPRequestHandler):
         if self.path.startswith("/monitor-status"):
             self._handle_monitor_status()
             return
+        if self.path.startswith("/recording-status"):
+            self._handle_recording_status()
+            return
         super().do_GET()
+
+    def _handle_recording_status(self):
+        with self.sessions_lock:
+            sessions = list_sessions(self.sessions_registry, now=time.time())
+
+        body = json.dumps(sessions).encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
     def _handle_files_list(self):
         query = parse_qs(urlparse(self.path).query)
@@ -77,9 +96,45 @@ class ChunksUploadHandler(SimpleHTTPRequestHandler):
             self._handle_upload()
         elif self.path.startswith("/events"):
             self._handle_event()
+        elif self.path.startswith("/session-start"):
+            self._handle_session_start()
+        elif self.path.startswith("/session-stop"):
+            self._handle_session_stop()
         else:
             self.send_response(404)
             self.end_headers()
+
+    def _handle_session_start(self):
+        query = parse_qs(urlparse(self.path).query)
+        try:
+            camera_id = int(query["camera"][0])
+        except (KeyError, ValueError, IndexError):
+            self.send_response(400)
+            self.end_headers()
+            return
+        name = query.get("name", [""])[0]
+        quality = query.get("quality", [""])[0]
+
+        with self.sessions_lock:
+            start_session(self.sessions_registry, camera_id, name, quality, now=time.time())
+
+        self.send_response(204)
+        self.end_headers()
+
+    def _handle_session_stop(self):
+        query = parse_qs(urlparse(self.path).query)
+        try:
+            camera_id = int(query["camera"][0])
+        except (KeyError, ValueError, IndexError):
+            self.send_response(400)
+            self.end_headers()
+            return
+
+        with self.sessions_lock:
+            stop_session(self.sessions_registry, camera_id)
+
+        self.send_response(204)
+        self.end_headers()
 
     def _handle_upload(self):
         query = parse_qs(urlparse(self.path).query)
@@ -97,6 +152,9 @@ class ChunksUploadHandler(SimpleHTTPRequestHandler):
 
         day_dir = build_day_dir(self.storage_root, session_id)
         save_chunk(day_dir, camera_id, session_id, part_number, data)
+
+        with self.sessions_lock:
+            record_chunk(self.sessions_registry, camera_id, len(data), now=time.time())
 
         self.send_response(204)
         self.end_headers()
@@ -133,6 +191,8 @@ def build_server(
     ChunksUploadHandler.n_cameras = n_cameras
     ChunksUploadHandler.events_file = events_file
     ChunksUploadHandler.monitor_csv = monitor_csv
+    ChunksUploadHandler.sessions_registry = {}
+    ChunksUploadHandler.sessions_lock = threading.Lock()
     handler = partial(ChunksUploadHandler, directory=str(static_dir))
 
     server = ThreadingHTTPServer((host, port), handler)
