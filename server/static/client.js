@@ -7,8 +7,7 @@ const deviceId = params.get("device") || null;
 const statusEl = document.getElementById("status");
 const statsEl = document.getElementById("stats");
 const pathEl = document.getElementById("save-path");
-document.getElementById("mode-label").textContent = mode;
-document.getElementById("camera-label").textContent = cameraId;
+const elapsedEl = document.getElementById("elapsed");
 pathEl.textContent = `Salvando na Pi em: ~/managerreplay-data/recordings/${mode}/<n-cameras>/camera-${cameraId}/`;
 
 const startedAt = Date.now();
@@ -30,7 +29,8 @@ function formatElapsed(ms) {
 
 function updateStats() {
   const elapsed = formatElapsed(Date.now() - startedAt);
-  statsEl.textContent = `Tempo gravado: ${elapsed} · Chunks enviados: ${chunksSent} · Total enviado: ${formatBytes(totalBytesSent)}`;
+  elapsedEl.textContent = elapsed;
+  statsEl.textContent = `Modo: ${mode} · Câmera: ${cameraId} · Chunks enviados: ${chunksSent} · Total enviado: ${formatBytes(totalBytesSent)}`;
 }
 
 setInterval(updateStats, 1000);
@@ -149,16 +149,20 @@ async function start() {
   }
 }
 
-const lanceFeedbackEl = document.getElementById("lance-feedback");
+const lanceToastEl = document.getElementById("lance-toast");
+let lanceToastTimer = null;
 
 document.getElementById("lance-button").addEventListener("click", async () => {
   try {
     const response = await fetch(`/events?camera=${cameraId}`, { method: "POST" });
     const event = await response.json();
-    lanceFeedbackEl.textContent = `✅ ${event.nome} registrado às ${event.timestamp}`;
+    lanceToastEl.textContent = `✅ ${event.nome} registrado`;
   } catch (err) {
-    lanceFeedbackEl.textContent = `erro ao registrar lance: ${err.message}`;
+    lanceToastEl.textContent = `erro ao registrar lance: ${err.message}`;
   }
+  lanceToastEl.classList.add("visible");
+  clearTimeout(lanceToastTimer);
+  lanceToastTimer = setTimeout(() => lanceToastEl.classList.remove("visible"), 3000);
 });
 
 start().catch((err) => {

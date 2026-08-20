@@ -6,6 +6,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from server.events import record_event
+from server.file_listing import list_directory
 from server.storage import build_camera_dir, save_chunk
 
 
@@ -23,6 +24,30 @@ class ChunksUploadHandler(SimpleHTTPRequestHandler):
             finally:
                 self.directory = original_directory
         return super().translate_path(path)
+
+    def do_GET(self):
+        if self.path.startswith("/files-list"):
+            self._handle_files_list()
+            return
+        super().do_GET()
+
+    def _handle_files_list(self):
+        query = parse_qs(urlparse(self.path).query)
+        rel_path = query.get("path", [""])[0]
+        try:
+            entries = list_directory(self.storage_root, rel_path)
+        except (ValueError, FileNotFoundError) as err:
+            self.send_response(404)
+            self.end_headers()
+            self.wfile.write(str(err).encode("utf-8"))
+            return
+
+        body = json.dumps(entries).encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
     def do_POST(self):
         if self.path.startswith("/upload"):

@@ -14,99 +14,130 @@
       padding: 1em;
       min-height: 100vh;
     }
-    header {
-      display: flex;
-      align-items: center;
-      gap: 0.5em;
-      margin-bottom: 0.75em;
-    }
-    .rec-dot {
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background: #dc2626;
-      animation: pulse 1.2s infinite;
-      flex-shrink: 0;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.3; }
-    }
-    h1 { font-size: 1.1em; margin: 0; }
     #video-wrap {
       position: relative;
       border-radius: 12px;
       overflow: hidden;
       background: #000;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
     }
     video {
       width: 100%;
       display: block;
+      position: absolute;
+      inset: 0;
+      object-fit: cover;
+      height: 100%;
     }
-    .info-box {
+    #video-wrap { aspect-ratio: 9 / 12; }
+    .overlay-row {
+      position: relative;
+      z-index: 1;
+      padding: 12px;
+    }
+    #rec-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(220, 38, 38, 0.9);
+      color: #fff;
+      font-size: 0.8em;
+      font-weight: 600;
+      padding: 6px 10px;
+      border-radius: 8px;
+    }
+    #rec-badge .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #fff;
+      animation: pulse 1.2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    .bottom-controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      background: linear-gradient(to top, rgba(0,0,0,0.75), transparent);
+      padding-top: 30px;
+    }
+    select {
+      appearance: none;
+      background: rgba(0, 0, 0, 0.6);
+      color: #eee;
+      border: none;
+      border-radius: 20px;
+      padding: 10px 14px;
+      font-size: 0.85em;
+      max-width: 55%;
+    }
+    #lance-button {
+      flex-shrink: 0;
+      padding: 14px 24px;
+      font-size: 1.15em;
+      font-weight: 700;
+      border: none;
+      border-radius: 50px;
+      background: #f59e0b;
+      color: #111;
+    }
+    #lance-button:active { background: #d97706; }
+    #lance-toast {
+      text-align: center;
+      margin-top: 0.6em;
+      font-weight: 600;
+      color: #f59e0b;
+      min-height: 1.2em;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    #lance-toast.visible { opacity: 1; }
+    details {
+      margin-top: 0.75em;
       background: #1e1e1e;
       border-radius: 10px;
-      padding: 0.75em 1em;
-      margin-top: 0.75em;
-      font-size: 0.95em;
-      line-height: 1.6;
+      padding: 0.6em 1em;
     }
-    #save-path { font-size: 0.8em; color: #999; word-break: break-all; }
-    #status { color: #4ade80; font-weight: 600; }
-    select {
-      width: 100%;
-      padding: 1em;
-      margin-top: 0.75em;
-      font-size: 1.1em;
-      font-weight: 600;
-      border: none;
-      border-radius: 10px;
-      background: #2563eb;
-      color: white;
+    summary {
+      cursor: pointer;
+      color: #93c5fd;
+      font-size: 0.9em;
     }
+    #status { color: #4ade80; font-weight: 600; margin-top: 0.5em; }
+    #stats, #save-path { font-size: 0.85em; color: #999; margin-top: 0.3em; word-break: break-all; }
     a.back-link {
       display: inline-block;
       margin-top: 0.75em;
       color: #93c5fd;
       text-decoration: none;
     }
-    #lance-button {
-      width: 100%;
-      padding: 1.2em;
-      margin-top: 0.75em;
-      font-size: 1.3em;
-      font-weight: 700;
-      border: none;
-      border-radius: 10px;
-      background: #f59e0b;
-      color: #111;
-    }
-    #lance-button:active { background: #d97706; }
-    #lance-feedback {
-      margin-top: 0.5em;
-      font-weight: 600;
-      color: #f59e0b;
-      min-height: 1.2em;
-    }
   </style>
 </head>
 <body>
-  <header>
-    <span class="rec-dot"></span>
-    <h1>Câmera <span id="camera-label"></span> · modo <span id="mode-label"></span></h1>
-  </header>
   <div id="video-wrap">
     <video id="preview" autoplay playsinline muted></video>
+    <div class="overlay-row">
+      <span id="rec-badge"><span class="dot"></span> gravando · <span id="elapsed">00:00</span></span>
+    </div>
+    <div class="overlay-row bottom-controls">
+      <select id="camera-device"></select>
+      <button id="lance-button" type="button">⚡ Lance</button>
+    </div>
   </div>
-  <div class="info-box">
+  <div id="lance-toast"></div>
+  <details>
+    <summary>⚙ detalhes técnicos</summary>
     <div id="status">iniciando...</div>
     <div id="stats"></div>
     <div id="save-path"></div>
-  </div>
-  <select id="camera-device"></select>
-  <button id="lance-button" type="button">⚡ Lance</button>
-  <div id="lance-feedback"></div>
+  </details>
   <a class="back-link" href="cameras.html">&larr; voltar ao menu</a>
-  <script src="client.js?v=6"></script>
+  <script src="client.js?v=7"></script>
 </body>
 </html>

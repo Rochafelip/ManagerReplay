@@ -111,3 +111,23 @@ def test_events_route_records_lance_and_returns_it(tmp_path: Path, self_signed_c
     finally:
         server.shutdown()
         thread.join(timeout=2)
+
+
+def test_files_list_route_returns_directory_entries(tmp_path: Path, self_signed_cert):
+    cert_path, key_path = self_signed_cert
+    storage_root = tmp_path / "storage"
+    (storage_root / "chunks").mkdir(parents=True)
+    (storage_root / "chunks" / "chunk-0000.webm").write_bytes(b"1234")
+
+    server, thread, port = _start_server(tmp_path, cert_path, key_path, storage_root)
+
+    try:
+        conn = _https_connection(port)
+        conn.request("GET", "/files-list?path=chunks")
+        response = conn.getresponse()
+        body = json.loads(response.read())
+        assert response.status == 200
+        assert body == [{"name": "chunk-0000.webm", "is_dir": False, "size": 4, "mtime": body[0]["mtime"]}]
+    finally:
+        server.shutdown()
+        thread.join(timeout=2)

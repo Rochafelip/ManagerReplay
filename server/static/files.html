@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>ManagerReplay — Arquivos</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, system-ui, sans-serif;
+      background: #111;
+      color: #eee;
+      margin: 0;
+      padding: 1.5em 1em;
+      min-height: 100vh;
+    }
+    h1 { font-size: 1.2em; margin: 0 0 0.5em; }
+    #breadcrumb {
+      font-size: 0.85em;
+      color: #999;
+      margin-bottom: 1em;
+      word-break: break-all;
+    }
+    #breadcrumb a { color: #93c5fd; text-decoration: none; }
+    .entry {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #1e1e1e;
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 8px;
+      text-decoration: none;
+      color: inherit;
+    }
+    .entry-name { font-size: 1.05em; font-weight: 600; }
+    .entry-meta { font-size: 0.8em; color: #999; margin-top: 2px; }
+    .entry-action {
+      background: #2563eb;
+      color: #fff;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.9em;
+      flex-shrink: 0;
+      margin-left: 12px;
+    }
+    .entry-chevron { color: #666; font-size: 1.3em; flex-shrink: 0; margin-left: 12px; }
+    #empty { color: #999; text-align: center; padding: 2em 0; }
+    a.back-link { display: inline-block; margin-top: 1em; color: #93c5fd; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <h1>📁 Arquivos</h1>
+  <div id="breadcrumb"></div>
+  <div id="listing"></div>
+  <a class="back-link" href="index.html">&larr; voltar ao menu</a>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const currentPath = params.get("path") || "";
+
+    function formatBytes(bytes) {
+      if (bytes < 1024) return `${bytes} B`;
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+      return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+    }
+
+    function formatDate(mtimeSeconds) {
+      const d = new Date(mtimeSeconds * 1000);
+      return d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+    }
+
+    function renderBreadcrumb() {
+      const breadcrumbEl = document.getElementById("breadcrumb");
+      const parts = currentPath.split("/").filter(Boolean);
+      let html = '<a href="files.html?path=">arquivos</a>';
+      let accPath = "";
+      for (const part of parts) {
+        accPath += (accPath ? "/" : "") + part;
+        html += ` / <a href="files.html?path=${encodeURIComponent(accPath)}">${part}</a>`;
+      }
+      breadcrumbEl.innerHTML = html;
+    }
+
+    function renderEntry(entry) {
+      const childPath = currentPath ? `${currentPath}/${entry.name}` : entry.name;
+      if (entry.is_dir) {
+        const a = document.createElement("a");
+        a.className = "entry";
+        a.href = `files.html?path=${encodeURIComponent(childPath)}`;
+        a.innerHTML = `
+          <div>
+            <div class="entry-name">📁 ${entry.name}</div>
+            <div class="entry-meta">pasta</div>
+          </div>
+          <div class="entry-chevron">›</div>
+        `;
+        return a;
+      }
+      const a = document.createElement("a");
+      a.className = "entry";
+      a.href = `/files/${childPath}`;
+      a.download = entry.name;
+      a.innerHTML = `
+        <div>
+          <div class="entry-name">${entry.name}</div>
+          <div class="entry-meta">${formatBytes(entry.size)} · ${formatDate(entry.mtime)}</div>
+        </div>
+        <div class="entry-action">⬇</div>
+      `;
+      return a;
+    }
+
+    async function load() {
+      renderBreadcrumb();
+      const listingEl = document.getElementById("listing");
+      try {
+        const response = await fetch(`/files-list?path=${encodeURIComponent(currentPath)}`);
+        if (!response.ok) throw new Error("não encontrado");
+        const entries = await response.json();
+        if (entries.length === 0) {
+          listingEl.innerHTML = '<div id="empty">Nenhuma gravação ainda.</div>';
+          return;
+        }
+        entries.forEach((entry) => listingEl.appendChild(renderEntry(entry)));
+      } catch (err) {
+        listingEl.innerHTML = `<div id="empty">erro: ${err.message}</div>`;
+      }
+    }
+
+    load();
+  </script>
+</body>
+</html>
