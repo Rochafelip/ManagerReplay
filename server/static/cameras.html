@@ -14,19 +14,40 @@
       padding: 1.5em 1em;
       min-height: 100vh;
     }
-    h1 { font-size: 1.2em; margin: 0 0 1em; }
-    h2 {
+    h1 { font-size: 1.2em; margin: 0 0 0.3em; }
+    .subtitle { color: #999; font-size: 0.9em; margin: 0 0 1.5em; }
+    label {
+      display: block;
       font-size: 0.85em;
       text-transform: uppercase;
       letter-spacing: 0.05em;
       color: #999;
-      margin: 1.2em 0 0.5em;
+      margin-bottom: 0.5em;
     }
+    #name-input {
+      display: block;
+      width: 100%;
+      padding: 0.9em 1em;
+      font-size: 1.1em;
+      background: #1e1e1e;
+      border: 1px solid #333;
+      color: #eee;
+      border-radius: 10px;
+    }
+    #name-input:focus { outline: none; border-color: #16a34a; }
+    #camera-step {
+      margin-top: 1.5em;
+      opacity: 0;
+      max-height: 0;
+      overflow: hidden;
+      transition: opacity 0.25s ease;
+    }
+    #camera-step.visible { opacity: 1; max-height: 300px; }
     a.camera-link {
       display: block;
       padding: 1em;
       margin: 0.5em 0;
-      background: #2563eb;
+      background: #16a34a;
       color: white;
       text-decoration: none;
       border-radius: 10px;
@@ -34,16 +55,53 @@
       font-weight: 600;
       text-align: center;
     }
-    a.camera-link:active { background: #1d4ed8; }
+    a.camera-link:active { background: #15803d; }
   </style>
 </head>
 <body>
-  <h1>ManagerReplay — escolha a câmera</h1>
-  <h2>Modo chunks</h2>
-  <a class="camera-link" href="capture.html?mode=chunks&camera=1">Câmera 1</a>
-  <a class="camera-link" href="capture.html?mode=chunks&camera=2">Câmera 2</a>
-  <h2>Modo WebRTC</h2>
-  <a class="camera-link" href="capture.html?mode=webrtc&camera=1">Câmera 1</a>
-  <a class="camera-link" href="capture.html?mode=webrtc&camera=2">Câmera 2</a>
+  <h1>ManagerReplay</h1>
+  <p class="subtitle">Quem vai gravar?</p>
+
+  <label for="name-input">Seu nome</label>
+  <input id="name-input" type="text" placeholder="Ex: Carlos" autocomplete="off" />
+
+  <div id="camera-step">
+    <label>Qual câmera você vai usar?</label>
+    <a class="camera-link" id="camera-1-link" href="#">📹 Câmera 1</a>
+    <a class="camera-link" id="camera-2-link" href="#">📹 Câmera 2</a>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "managerreplay_operator_name";
+    const nameInput = document.getElementById("name-input");
+    const cameraStep = document.getElementById("camera-step");
+    const cameraLinks = {
+      1: document.getElementById("camera-1-link"),
+      2: document.getElementById("camera-2-link"),
+    };
+
+    function updateLinks(name) {
+      const encoded = encodeURIComponent(name.trim());
+      cameraLinks[1].href = `capture.html?mode=chunks&camera=1&name=${encoded}`;
+      cameraLinks[2].href = `capture.html?mode=chunks&camera=2&name=${encoded}`;
+    }
+
+    function onNameChange() {
+      const name = nameInput.value.trim();
+      cameraStep.classList.toggle("visible", name.length > 0);
+      if (name.length > 0) {
+        updateLinks(name);
+        localStorage.setItem(STORAGE_KEY, name);
+      }
+    }
+
+    nameInput.addEventListener("input", onNameChange);
+
+    const savedName = localStorage.getItem(STORAGE_KEY);
+    if (savedName) {
+      nameInput.value = savedName;
+      onNameChange();
+    }
+  </script>
 </body>
 </html>

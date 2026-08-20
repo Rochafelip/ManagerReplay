@@ -1,14 +1,20 @@
 const params = new URLSearchParams(window.location.search);
-const mode = params.get("mode") || "chunks";
+const mode = "chunks";
 const cameraId = params.get("camera") || "1";
 const facing = params.get("facing") || "environment";
 const deviceId = params.get("device") || null;
+const operatorName = params.get("name") || "";
 
 const statusEl = document.getElementById("status");
 const statsEl = document.getElementById("stats");
 const pathEl = document.getElementById("save-path");
 const elapsedEl = document.getElementById("elapsed");
 pathEl.textContent = `Salvando na Pi em: ~/managerreplay-data/recordings/${mode}/<n-cameras>/camera-${cameraId}/`;
+
+if (operatorName) {
+  document.getElementById("operator-name").textContent = operatorName;
+  document.getElementById("operator-badge").hidden = false;
+}
 
 const startedAt = Date.now();
 let totalBytesSent = 0;
@@ -114,26 +120,6 @@ async function startChunksMode(stream) {
   recorder.start(30000);
 }
 
-async function startWebrtcMode(stream) {
-  const pc = new RTCPeerConnection();
-  stream.getTracks().forEach((track) => pc.addTrack(track, stream));
-
-  const offer = await pc.createOffer();
-  await pc.setLocalDescription(offer);
-
-  const response = await fetch(`/offer/${cameraId}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sdp: pc.localDescription.sdp, type: pc.localDescription.type }),
-  });
-  const answer = await response.json();
-  await pc.setRemoteDescription(answer);
-
-  pc.onconnectionstatechange = () => {
-    statusEl.textContent = `webrtc: ${pc.connectionState}`;
-  };
-}
-
 let wakeLock = null;
 
 async function requestWakeLock() {
@@ -157,12 +143,7 @@ async function start() {
   const stream = await navigator.mediaDevices.getUserMedia(constraints);
   document.getElementById("preview").srcObject = stream;
   await populateDeviceSelect(stream);
-
-  if (mode === "chunks") {
-    await startChunksMode(stream);
-  } else {
-    await startWebrtcMode(stream);
-  }
+  await startChunksMode(stream);
 }
 
 const lanceToastEl = document.getElementById("lance-toast");

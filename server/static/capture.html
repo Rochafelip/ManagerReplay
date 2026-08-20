@@ -48,6 +48,18 @@
       padding: 6px 10px;
       border-radius: 8px;
     }
+    #operator-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(22, 163, 74, 0.9);
+      color: #fff;
+      font-size: 0.8em;
+      font-weight: 600;
+      padding: 6px 10px;
+      border-radius: 8px;
+      margin-top: 6px;
+    }
     #rec-badge .dot {
       width: 8px;
       height: 8px;
@@ -133,6 +145,8 @@
     <video id="preview" autoplay playsinline muted></video>
     <div class="overlay-row">
       <span id="rec-badge"><span class="dot"></span> gravando · <span id="elapsed">00:00</span></span>
+      <br />
+      <span id="operator-badge" hidden>🎥 <span id="operator-name"></span></span>
     </div>
     <div class="overlay-row bottom-controls">
       <select id="camera-device"></select>
@@ -147,6 +161,6 @@
     <div id="save-path"></div>
   </details>
   <a class="back-link" href="cameras.html">&larr; voltar ao menu</a>
-  <script src="client.js?v=9"></script>
+  <script src="client.js?v=10"></script>
 </body>
 </html>
