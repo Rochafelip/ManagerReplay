@@ -109,11 +109,34 @@ async function populateDeviceSelect(activeStream) {
     select.appendChild(option);
   });
 
-  select.addEventListener("change", () => {
-    const nextUrl = new URL(window.location.href);
-    nextUrl.searchParams.set("device", select.value);
-    window.location.href = nextUrl.toString();
+  select.addEventListener("change", () => switchCamera(select.value));
+}
+
+async function switchCamera(newDeviceId) {
+  const newStream = await navigator.mediaDevices.getUserMedia({
+    video: {
+      deviceId: { exact: newDeviceId },
+      width: { ideal: 1280 },
+      height: { ideal: 720 },
+      frameRate: { ideal: 30 },
+    },
+    audio: false,
   });
+  const newVideoTrack = newStream.getVideoTracks()[0];
+  const oldVideoTrack = mediaStream.getVideoTracks()[0];
+
+  // Swap the track on the same MediaStream object instead of reloading the
+  // page, so an in-progress MediaRecorder keeps recording continuously
+  // (same session, same part sequence) instead of starting a new file series.
+  mediaStream.removeTrack(oldVideoTrack);
+  mediaStream.addTrack(newVideoTrack);
+  oldVideoTrack.stop();
+
+  document.getElementById("preview").srcObject = mediaStream;
+
+  const nextUrl = new URL(window.location.href);
+  nextUrl.searchParams.set("device", newDeviceId);
+  window.history.replaceState({}, "", nextUrl.toString());
 }
 
 let mediaStream = null;
@@ -148,7 +171,6 @@ function beginRecording() {
   recorder.start(30000);
 
   recBadgeEl.hidden = false;
-  deviceSelectEl.disabled = true;
   recordToggleEl.textContent = "■ Parar gravação";
   recordToggleEl.classList.add("recording");
   lanceButtonEl.hidden = false;
