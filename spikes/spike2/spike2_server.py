@@ -1,5 +1,11 @@
 import argparse
+import sys
 from pathlib import Path
+
+# Allow running this file directly (e.g. `python3 spikes/spike2/spike2_server.py`)
+# by putting the package root (the directory containing `spikes/`) on sys.path —
+# direct script execution only adds this file's own directory otherwise.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 
 def parse_args():
