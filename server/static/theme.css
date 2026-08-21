@@ -134,7 +134,8 @@ input {
 .topbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: 10px;
 
   margin-bottom: 18px;
 }
@@ -169,6 +170,28 @@ input {
   font-size: 1rem;
 }
 
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 34px;
+  height: 34px;
+  flex: none;
+
+  border: 1px solid var(--border);
+  border-radius: 9px;
+
+  background: var(--card-bg);
+  color: var(--text-secondary);
+
+  box-shadow: var(--shadow-sm);
+}
+
+.icon-button:active {
+  background: var(--bg);
+}
+
 .page-title {
   font-size: 1.28rem;
   font-weight: 800;
@@ -199,30 +222,6 @@ input {
 
   background: var(--card-bg);
   box-shadow: var(--shadow-sm);
-}
-
-
-/* =========================================================
-   VOLTAR
-   ========================================================= */
-
-a.back-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-
-  margin-top: 1.5em;
-
-  color: var(--text-secondary);
-
-  font-size: 0.87rem;
-  font-weight: 700;
-
-  text-decoration: none;
-}
-
-a.back-link:active {
-  opacity: 0.65;
 }
 
 
