@@ -189,7 +189,7 @@ def test_events_route_records_lance_and_returns_it(tmp_path: Path, self_signed_c
         response = conn.getresponse()
         body = json.loads(response.read())
         assert response.status == 200
-        assert body["nome"] == "LanceEpico 001"
+        assert body["nome"] == "Lance Epico 001"
         assert body["camera"] == "1"
     finally:
         server.shutdown()
@@ -211,7 +211,7 @@ def test_events_list_route_returns_recorded_events(tmp_path: Path, self_signed_c
         body = json.loads(response.read())
         assert response.status == 200
         assert len(body) == 1
-        assert body[0]["nome"] == "LanceEpico 001"
+        assert body[0]["nome"] == "Lance Epico 001"
         assert body[0]["camera"] == "1"
     finally:
         server.shutdown()

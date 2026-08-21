@@ -8,7 +8,7 @@ def _next_name(events_file: Path) -> str:
     if events_file.exists():
         with events_file.open("r", encoding="utf-8") as f:
             count = sum(1 for line in f if line.strip())
-    return f"LanceEpico {count + 1:03d}"
+    return f"Lance Epico {count + 1:03d}"
 
 
 def record_event(events_file: Path, camera_id: str) -> dict:
