@@ -21,6 +21,16 @@ let chunksSent = 0;
 let startedAt = null;
 let statsTimer = null;
 
+// Upload health, surfaced in Detalhes técnicos so the person recording can
+// spot a struggling connection without needing someone else watching
+// "Quem está gravando" on another screen.
+let pendingUploads = 0;
+let lastChunkConfirmedAt = null;
+let lastUploadLatencyMs = null;
+let lastUploadRateBytesPerSec = null;
+
+const transferStatsEl = document.getElementById("transfer-stats");
+
 const LANCE_MIN_MS = 30000;
 const lanceButtonEl = document.getElementById("lance-button");
 const lanceButtonLabelEl = document.getElementById("lance-button-label");
@@ -105,11 +115,25 @@ function formatElapsed(ms) {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
+function updateTransferStats() {
+  if (!transferStatsEl) return;
+
+  const rate = lastUploadRateBytesPerSec != null ? `${formatBytes(Math.round(lastUploadRateBytesPerSec))}/s` : "—";
+  const latency = lastUploadLatencyMs != null ? `${Math.round(lastUploadLatencyMs)} ms` : "—";
+  const sinceLast = lastChunkConfirmedAt != null
+    ? `${Math.round((Date.now() - lastChunkConfirmedAt) / 1000)}s atrás`
+    : "aguardando 1º envio";
+
+  transferStatsEl.textContent =
+    `Taxa: ${rate} · Fila: ${pendingUploads} · Último envio: ${sinceLast} · Latência: ${latency}`;
+}
+
 function updateStats() {
   const elapsedMs = Date.now() - startedAt;
   elapsedEl.textContent = formatElapsed(elapsedMs);
   const cameraLabel = facing === "user" ? "Frontal" : "Traseira";
   statsEl.textContent = `Modo: ${mode} · Câmera: ${cameraLabel} · Chunks enviados: ${chunksSent} · Total enviado: ${formatBytes(totalBytesSent)}`;
+  updateTransferStats();
 
   if (elapsedMs >= LANCE_MIN_MS) {
     if (lanceButtonEl.disabled) {
@@ -384,6 +408,10 @@ function beginRecording() {
   chunksSent = 0;
   startedAt = Date.now();
   lastUploadPromise = Promise.resolve();
+  pendingUploads = 0;
+  lastChunkConfirmedAt = null;
+  lastUploadLatencyMs = null;
+  lastUploadRateBytesPerSec = null;
 
   recorder = new MediaRecorder(mediaStream, { mimeType: "video/webm;codecs=vp8" });
   const sessionId = new Date().toISOString().replace(/[:.]/g, "-");
@@ -392,13 +420,22 @@ function beginRecording() {
   recorder.ondataavailable = (event) => {
     if (event.data.size === 0) return;
     const part = partNumber++;
+    pendingUploads += 1;
     lastUploadPromise = lastUploadPromise.then(async () => {
+      const uploadStartedAt = performance.now();
       await fetch(`/upload?camera=${cameraId}&session=${sessionId}&part=${part}`, {
         method: "POST",
         body: event.data,
       });
+      const latencyMs = performance.now() - uploadStartedAt;
+
+      pendingUploads -= 1;
       totalBytesSent += event.data.size;
       chunksSent += 1;
+      lastChunkConfirmedAt = Date.now();
+      lastUploadLatencyMs = latencyMs;
+      lastUploadRateBytesPerSec = latencyMs > 0 ? (event.data.size / latencyMs) * 1000 : null;
+
       statusEl.textContent = `chunks: enviado parte ${part} (${formatBytes(event.data.size)})`;
       updateStats();
     });
