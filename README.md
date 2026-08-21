@@ -105,15 +105,23 @@ Layout esperado na Pi, tudo sob `~/managerreplay/`:
 
 ### Gravando num pendrive/SSD USB externo
 
-A tela **Monitor** detecta automaticamente qualquer pendrive/SSD USB montado na Pi (qualquer dispositivo `/dev/sdX` — a Pi não tem SATA embutido, então isso nunca é confundido com o cartão SD, que é sempre `/dev/mmcblk0...`) e mostra o espaço livre nele. A detecção é só informativa — a gravação continua indo pro cartão SD até você apontar `--storage-root` explicitamente pro caminho de montagem do drive externo:
+A tela **Monitor** detecta automaticamente qualquer pendrive/SSD USB montado na Pi (qualquer dispositivo `/dev/sdX` — a Pi não tem SATA embutido, então isso nunca é confundido com o cartão SD, que é sempre `/dev/mmcblk0...`) e mostra um card **"Local de gravação"** com o cartão SD e qualquer drive externo montado, cada um com o espaço livre — basta escolher e clicar em "Usar este local" pra trocar o destino das próximas gravações, sem precisar mexer em configuração nem reiniciar o servidor.
+
+Detalhes técnicos de como isso funciona (`chunks_receiver.py`):
+
+- **`GET /storage-options`** lista o cartão SD (`default_storage_root`, fixado na inicialização) + qualquer `/dev/sdX` detectado via `detect_external_storage()`, com espaço livre/total de cada um.
+- **`POST /storage-select?path=<...>`** troca `ChunksUploadHandler.storage_root` (um atributo de classe, protegido por `sessions_lock`) pro caminho escolhido. Um drive externo grava numa subpasta própria (`<mountpoint>/managerreplay-recordings/`), nunca solto na raiz do drive — evita misturar arquivos do app com o que já estiver lá.
+- **Trava de segurança**: a troca é recusada com `409` se `sessions_registry` não estiver vazio (alguma câmera gravando agora). Isso evita que um upload em andamento tente escrever no destino errado no meio da troca.
+- **Não é persistente** entre reinícios do servidor — sempre volta pro cartão SD no boot. Isso é deliberado: se o pendrive for removido enquanto a Pi está desligada, ela ainda sobe normalmente gravando no SD, em vez de falhar tentando um caminho que não existe mais.
+- A tela de Arquivos (`files.html`) e a listagem de lances sempre refletem o `storage_root` **atualmente ativo** — não existe uma visão unificada mostrando gravações de ambos os locais ao mesmo tempo. Se trocar de local no meio do dia, as gravações feitas antes da troca continuam existindo no local antigo, só não aparecem mais em Arquivos até trocar de volta.
+
+Ainda dá pra fixar o destino via `--storage-root` na hora de subir o servidor (útil se você sempre grava no mesmo drive externo e quer pular a seleção manual toda vez):
 
 ```bash
 .venv/bin/python app.py --mode=chunks --cameras=1 \
   --storage-root /media/rocha/SSD1/managerreplay-recordings \
   --cert ~/managerreplay/certs/<ip>.pem --key ~/managerreplay/certs/<ip>-key.pem
 ```
-
-Se estiver usando o systemd (ver seção abaixo), edite `ExecStart=` em `/etc/systemd/system/managerreplay-server.service` com o mesmo `--storage-root` e rode `sudo systemctl daemon-reload && sudo systemctl restart managerreplay-server`. Não existe troca automática de destino em tempo real (ex: se o pendrive for desconectado no meio de uma gravação) — é uma escolha de configuração feita antes de subir o servidor, mantendo o código simples.
 
 ## Hotspot Wi-Fi da Pi
 

@@ -50,6 +50,50 @@
     .capacity-row .capacity-value { font-weight: 800; font-variant-numeric: tabular-nums; }
     .capacity-note { margin-top: 8px; font-size: 0.74rem; color: var(--text-muted); line-height: 1.4; }
 
+    .storage-option {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+      cursor: pointer;
+    }
+    .storage-option + .storage-option {
+      border-top: 1px solid var(--border);
+    }
+    .storage-option input[type="radio"] {
+      flex: none;
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent);
+    }
+    .storage-option-body {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+    .storage-option-label { font-size: 0.86rem; font-weight: 700; overflow-wrap: break-word; }
+    .storage-option.selected .storage-option-label { color: var(--accent); }
+    .storage-option-meta { font-size: 0.74rem; color: var(--text-muted); margin-top: 2px; }
+
+    .storage-select-button {
+      display: block;
+      width: 100%;
+      margin-top: 10px;
+      padding: 12px;
+      font-size: 0.9rem;
+      font-weight: 800;
+      border: none;
+      border-radius: var(--radius-sm);
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+    }
+    .storage-select-button:disabled {
+      background: var(--border-strong);
+      color: var(--text-muted);
+      cursor: not-allowed;
+    }
+
     #alerts { margin-top: 12px; }
     .alert {
       display: flex;
@@ -184,33 +228,76 @@
 
     const ICON_DRIVE = '<svg class="icon" viewBox="0 0 24 24"><line x1="22" x2="2" y1="12" y2="12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/><line x1="6" x2="6.01" y1="16" y2="16"/><line x1="10" x2="10.01" y1="16" y2="16"/></svg>';
 
-    function renderExternalStorageCard(devices) {
-      if (!devices || devices.length === 0) {
-        return `
-          <div class="card stat-card" style="margin-top: 10px;">
-            <div class="label">${ICON_DRIVE} Armazenamento externo</div>
-            <div class="capacity-note">Nenhum pendrive/SSD USB conectado.</div>
-          </div>
-        `;
-      }
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, (ch) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+      })[ch]);
+    }
 
-      const rows = devices.map((d) => `
-        <div class="capacity-row">
-          <span class="capacity-label">${d.device} · ${d.fstype}</span>
-          <span class="capacity-value">${formatStorage(d.free_mb)} livres de ${formatStorage(d.total_mb)}</span>
-        </div>
-      `).join("");
+    async function fetchStorageOptions() {
+      const response = await fetch("/storage-options");
+      if (!response.ok) throw new Error("não foi possível ler os locais de gravação");
+      return response.json();
+    }
+
+    function renderStorageSelector(storageOptions) {
+      const rows = storageOptions.options.map((opt) => {
+        const isCurrent = opt.path === storageOptions.current;
+        return `
+          <label class="storage-option ${isCurrent ? "selected" : ""}">
+            <input type="radio" name="storage-choice" value="${escapeHtml(opt.path)}" ${isCurrent ? "checked" : ""} />
+            <span class="storage-option-body">
+              <span class="storage-option-label">${escapeHtml(opt.label)}${isCurrent ? " — em uso" : ""}</span>
+              <span class="storage-option-meta">${formatStorage(opt.disk_free_mb)} livres de ${formatStorage(opt.disk_total_mb)}</span>
+            </span>
+          </label>
+        `;
+      }).join("");
 
       return `
         <div class="card stat-card" style="margin-top: 10px;">
-          <div class="label">${ICON_DRIVE} Armazenamento externo conectado</div>
-          ${rows}
-          <div class="capacity-note">Detectado, mas a gravação ainda vai pro cartão SD por padrão. Pra gravar nesse dispositivo, aponte <code>--storage-root</code> pro caminho de montagem ao subir o servidor (ver README).</div>
+          <div class="label">${ICON_DRIVE} Local de gravação</div>
+          <div id="storage-options-list">${rows}</div>
+          <button id="storage-select-button" type="button" class="storage-select-button" disabled>Usar este local</button>
+          <div id="storage-select-message" class="capacity-note"></div>
         </div>
       `;
     }
 
-    function render(status) {
+    function attachStorageSelectorListeners(storageOptions) {
+      const listEl = document.getElementById("storage-options-list");
+      const selectButtonEl = document.getElementById("storage-select-button");
+      const messageEl = document.getElementById("storage-select-message");
+      if (!listEl || !selectButtonEl) return;
+
+      listEl.addEventListener("change", () => {
+        const chosen = listEl.querySelector("input[name='storage-choice']:checked");
+        selectButtonEl.disabled = !chosen || chosen.value === storageOptions.current;
+      });
+
+      selectButtonEl.addEventListener("click", async () => {
+        const chosen = listEl.querySelector("input[name='storage-choice']:checked");
+        if (!chosen) return;
+        selectButtonEl.disabled = true;
+        messageEl.textContent = "Trocando...";
+        try {
+          const response = await fetch(`/storage-select?path=${encodeURIComponent(chosen.value)}`, { method: "POST" });
+          if (response.status === 409) {
+            messageEl.textContent = "Não dá pra trocar com uma câmera gravando agora.";
+            selectButtonEl.disabled = false;
+            return;
+          }
+          if (!response.ok) throw new Error("não foi possível trocar o local de gravação");
+          messageEl.textContent = "Local de gravação atualizado.";
+          measure();
+        } catch (err) {
+          messageEl.textContent = `Erro: ${err.message}`;
+          selectButtonEl.disabled = false;
+        }
+      });
+    }
+
+    function render(status, storageOptions) {
       const ramPct = ((status.ram_used_mb / status.ram_total_mb) * 100).toFixed(0);
       const diskPct = ((status.disk_used_mb / status.disk_total_mb) * 100).toFixed(0);
       const freeMb = Math.max(0, status.disk_total_mb - status.disk_used_mb);
@@ -258,11 +345,12 @@
           <div class="capacity-note">Estimativa a partir do espaço livre (${formatStorage(freeMb)}) e da taxa média observada — pode variar conforme a cena gravada.</div>
         </div>
 
-        ${renderExternalStorageCard(status.external_storage)}
+        ${renderStorageSelector(storageOptions)}
 
         <div id="alerts">${alerts.map((a) => `<div class="alert ${a.tone}">${a.icon}<span>${a.text}</span></div>`).join("")}</div>
       `;
       lastUpdatedEl.textContent = `Última leitura: ${status.timestamp}`;
+      attachStorageSelectorListeners(storageOptions);
     }
 
     const refreshButtonEl = document.getElementById("refresh-button");
@@ -274,10 +362,13 @@
       refreshButtonLabelEl.textContent = "Medindo...";
       refreshButtonIconEl.classList.add("spin");
       try {
-        const response = await fetch("/monitor-status");
-        if (!response.ok) throw new Error("não foi possível medir agora");
-        const status = await response.json();
-        render(status);
+        const [statusResponse, storageOptions] = await Promise.all([
+          fetch("/monitor-status"),
+          fetchStorageOptions(),
+        ]);
+        if (!statusResponse.ok) throw new Error("não foi possível medir agora");
+        const status = await statusResponse.json();
+        render(status, storageOptions);
       } catch (err) {
         contentEl.innerHTML = `<div id="error-banner">Não foi possível ler o status: ${err.message}</div>`;
       } finally {

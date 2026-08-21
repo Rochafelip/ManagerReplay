@@ -397,3 +397,96 @@ def test_monitor_status_route_returns_503_when_measurement_fails(tmp_path: Path,
             thread.join(timeout=2)
 
     assert response.status == 503
+
+
+def test_storage_options_lists_default_and_detected_external_drives(tmp_path: Path, self_signed_cert):
+    cert_path, key_path = self_signed_cert
+    storage_root = tmp_path / "storage"
+    fake_external = [{"device": "/dev/sda1", "mountpoint": "/media/hd1", "fstype": "exfat", "total_mb": 2000000, "free_mb": 1000000}]
+
+    with patch("server.chunks_receiver.detect_external_storage", return_value=fake_external):
+        server, thread, port = _start_server(tmp_path, cert_path, key_path, storage_root)
+        try:
+            conn = _https_connection(port)
+            conn.request("GET", "/storage-options")
+            response = conn.getresponse()
+            body = json.loads(response.read())
+        finally:
+            server.shutdown()
+            thread.join(timeout=2)
+
+    assert response.status == 200
+    assert body["current"] == str(storage_root)
+    paths = [o["path"] for o in body["options"]]
+    assert str(storage_root) in paths
+    assert "/media/hd1" in paths
+
+
+def test_storage_select_switches_where_new_uploads_are_saved(tmp_path: Path, self_signed_cert):
+    cert_path, key_path = self_signed_cert
+    storage_root = tmp_path / "storage"
+    external_mount = tmp_path / "media" / "hd1"
+    external_mount.mkdir(parents=True)
+    fake_external = [{"device": "/dev/sda1", "mountpoint": str(external_mount), "fstype": "exfat", "total_mb": 2000000, "free_mb": 1000000}]
+
+    with patch("server.chunks_receiver.detect_external_storage", return_value=fake_external):
+        server, thread, port = _start_server(tmp_path, cert_path, key_path, storage_root)
+        try:
+            conn = _https_connection(port)
+            conn.request("POST", f"/storage-select?path={external_mount}")
+            select_response = conn.getresponse()
+            select_response.read()
+            assert select_response.status == 204
+
+            conn = _https_connection(port)
+            conn.request("POST", "/upload?camera=1&session=2026-08-21T10-00-00&part=1", body=b"after-switch")
+            conn.getresponse().read()
+        finally:
+            server.shutdown()
+            thread.join(timeout=2)
+
+    written = external_mount / "managerreplay-recordings" / "2026-08-21" / "camera1_2026-08-21T10-00-00_parte1.webm"
+    assert written.read_bytes() == b"after-switch"
+    assert not (storage_root / "2026-08-21").exists()
+
+
+def test_storage_select_rejects_unknown_path(tmp_path: Path, self_signed_cert):
+    cert_path, key_path = self_signed_cert
+
+    with patch("server.chunks_receiver.detect_external_storage", return_value=[]):
+        server, thread, port = _start_server(tmp_path, cert_path, key_path)
+        try:
+            conn = _https_connection(port)
+            conn.request("POST", "/storage-select?path=/nope/not-a-real-option")
+            response = conn.getresponse()
+            response.read()
+        finally:
+            server.shutdown()
+            thread.join(timeout=2)
+
+    assert response.status == 400
+
+
+def test_storage_select_rejects_switch_while_a_camera_is_recording(tmp_path: Path, self_signed_cert):
+    cert_path, key_path = self_signed_cert
+    storage_root = tmp_path / "storage"
+    external_mount = tmp_path / "media" / "hd1"
+    external_mount.mkdir(parents=True)
+    fake_external = [{"device": "/dev/sda1", "mountpoint": str(external_mount), "fstype": "exfat", "total_mb": 2000000, "free_mb": 1000000}]
+
+    with patch("server.chunks_receiver.detect_external_storage", return_value=fake_external):
+        server, thread, port = _start_server(tmp_path, cert_path, key_path, storage_root)
+        try:
+            conn = _https_connection(port)
+            conn.request("POST", "/session-start?camera=1&name=Carlos&quality=hd30")
+            conn.getresponse().read()
+
+            conn = _https_connection(port)
+            conn.request("POST", f"/storage-select?path={external_mount}")
+            response = conn.getresponse()
+            response.read()
+        finally:
+            server.shutdown()
+            thread.join(timeout=2)
+
+    assert response.status == 409

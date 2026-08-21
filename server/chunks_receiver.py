@@ -22,8 +22,12 @@ from server.storage import build_day_dir, find_session_parts, save_chunk, save_l
 _MERGED_RECORDING_PATTERN = re.compile(r"^camera(\d+)_(.+)\.webm$")
 
 
+RECORDINGS_SUBFOLDER = "managerreplay-recordings"
+
+
 class ChunksUploadHandler(SimpleHTTPRequestHandler):
     storage_root: Path = None
+    default_storage_root: Path = None
     n_cameras: int = 1
     events_file: Path = None
     sessions_registry: dict = None
@@ -52,9 +56,58 @@ class ChunksUploadHandler(SimpleHTTPRequestHandler):
         if self.path.startswith("/events-list"):
             self._handle_events_list()
             return
+        if self.path.startswith("/storage-options"):
+            self._handle_storage_options()
+            return
         if self.path.startswith("/files/") and self._serve_merged_recording():
             return
         super().do_GET()
+
+    def _storage_root_for_choice(self, choice_path: str) -> Path:
+        if choice_path == str(self.default_storage_root):
+            return self.default_storage_root
+        return Path(choice_path) / RECORDINGS_SUBFOLDER
+
+    def _storage_choices(self) -> dict:
+        """Maps each selectable "path" (as shown to/sent by the client) to
+        the actual directory recordings get written under. The default
+        choice records directly into storage_root; anything else (an
+        external drive's mountpoint) gets a dedicated subfolder so we never
+        write ManagerReplay's files loose among whatever else is already on
+        that drive."""
+        choices = {str(self.default_storage_root): self.default_storage_root}
+        for device in detect_external_storage():
+            choices[device["mountpoint"]] = self._storage_root_for_choice(device["mountpoint"])
+        return choices
+
+    def _handle_storage_options(self):
+        default_usage = get_disk_usage(self.default_storage_root)
+        options = [{
+            "path": str(self.default_storage_root),
+            "label": "Cartão SD (padrão)",
+            "disk_total_mb": default_usage["disk_total_mb"],
+            "disk_free_mb": default_usage["disk_total_mb"] - default_usage["disk_used_mb"],
+        }]
+        for device in detect_external_storage():
+            options.append({
+                "path": device["mountpoint"],
+                "label": f"{device['mountpoint']} ({device['fstype']})",
+                "disk_total_mb": device["total_mb"],
+                "disk_free_mb": device["free_mb"],
+            })
+
+        choices = self._storage_choices()
+        current = next(
+            (path for path, root in choices.items() if root == self.storage_root),
+            str(self.storage_root),
+        )
+
+        body = json.dumps({"current": current, "options": options}).encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
     def _handle_events_list(self):
         body = json.dumps(list_events(self.events_file)).encode("utf-8")
@@ -158,9 +211,41 @@ class ChunksUploadHandler(SimpleHTTPRequestHandler):
             self._handle_session_start()
         elif self.path.startswith("/session-stop"):
             self._handle_session_stop()
+        elif self.path.startswith("/storage-select"):
+            self._handle_storage_select()
         else:
             self.send_response(404)
             self.end_headers()
+
+    def _handle_storage_select(self):
+        query = parse_qs(urlparse(self.path).query)
+        try:
+            choice_path = query["path"][0]
+        except (KeyError, IndexError):
+            self.send_response(400)
+            self.end_headers()
+            return
+
+        choices = self._storage_choices()
+        if choice_path not in choices:
+            self.send_response(400)
+            self.end_headers()
+            self.wfile.write(b"unknown storage path")
+            return
+
+        with self.sessions_lock:
+            if self.sessions_registry:
+                self.send_response(409)
+                self.end_headers()
+                self.wfile.write(b"cannot switch storage while a camera is recording")
+                return
+
+            new_root = choices[choice_path]
+            new_root.mkdir(parents=True, exist_ok=True)
+            ChunksUploadHandler.storage_root = new_root
+
+        self.send_response(204)
+        self.end_headers()
 
     def _handle_session_start(self):
         query = parse_qs(urlparse(self.path).query)
@@ -265,6 +350,7 @@ def build_server(
     port: int = 8443,
 ) -> ThreadingHTTPServer:
     ChunksUploadHandler.storage_root = storage_root
+    ChunksUploadHandler.default_storage_root = storage_root
     ChunksUploadHandler.n_cameras = n_cameras
     ChunksUploadHandler.events_file = events_file
     ChunksUploadHandler.sessions_registry = {}
