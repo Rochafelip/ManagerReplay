@@ -225,8 +225,21 @@ function updateCameraInfo(track) {
   const settings = track.getSettings();
   const width = settings.width || "?";
   const height = settings.height || "?";
-  const fps = settings.frameRate ? Math.round(settings.frameRate) : "?";
-  cameraInfoEl.textContent = `Câmera ativa: ${width}×${height} @ ${fps}fps`;
+  const fps = settings.frameRate ? Math.round(settings.frameRate) : null;
+  let text = `Câmera ativa: ${width}×${height} @ ${fps ?? "?"}fps`;
+
+  // Ground truth beats trusting the request: even a "min" (hard) frameRate
+  // constraint isn't always honored by Android's camera stack — some
+  // phones' default capture session caps fps below what the sensor can
+  // technically do in its native camera app (that uses a different,
+  // vendor-specific high-speed session the browser has no access to).
+  // Surface the mismatch here instead of leaving it looking like a bug.
+  const targetFps = QUALITY_PRESETS[quality].frameRate;
+  if (fps && fps < targetFps - 2) {
+    text += ` (pediu ${targetFps}fps, aparelho não entregou)`;
+  }
+
+  cameraInfoEl.textContent = text;
 }
 
 function refreshPreview() {
