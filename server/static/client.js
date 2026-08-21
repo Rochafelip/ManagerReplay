@@ -98,6 +98,20 @@ function matchesFacing(label, targetFacing) {
   return hints.some((hint) => lower.includes(hint));
 }
 
+const LENS_HINTS = [
+  [/ultra.?wide|wide.?angle/, "grande angular"],
+  [/tele/, "teleobjetiva"],
+  [/macro/, "macro"],
+];
+
+function friendlyDeviceLabel(device, index, total) {
+  const base = facing === "user" ? "Frontal" : "Traseira";
+  const lower = (device.label || "").toLowerCase();
+  const lensHint = LENS_HINTS.find(([pattern]) => pattern.test(lower));
+  const suffix = lensHint ? ` (${lensHint[1]})` : "";
+  return total > 1 ? `${base} ${index + 1}${suffix}` : `${base}${suffix}`;
+}
+
 async function populateDeviceSelect(activeStream) {
   const select = document.getElementById("camera-device");
   const devices = await navigator.mediaDevices.enumerateDevices();
@@ -117,7 +131,7 @@ async function populateDeviceSelect(activeStream) {
   relevantDevices.forEach((device, index) => {
     const option = document.createElement("option");
     option.value = device.deviceId;
-    option.textContent = device.label || `Câmera ${index + 1}`;
+    option.textContent = friendlyDeviceLabel(device, index, relevantDevices.length);
     if (device.deviceId === activeDeviceId) option.selected = true;
     select.appendChild(option);
   });
