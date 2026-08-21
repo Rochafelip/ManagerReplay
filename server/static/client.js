@@ -186,7 +186,23 @@ async function populateDeviceSelect(activeStream) {
     select.appendChild(option);
   });
 
-  select.addEventListener("change", () => switchCamera(select.value));
+  select.addEventListener("change", () => {
+    switchCamera(select.value).catch((err) => {
+      statusEl.textContent = `erro ao trocar de lente: ${err.message}`;
+      console.error(err);
+    });
+  });
+}
+
+const cameraInfoEl = document.getElementById("camera-info");
+
+function updateCameraInfo(track) {
+  if (!cameraInfoEl) return;
+  const settings = track.getSettings();
+  const width = settings.width || "?";
+  const height = settings.height || "?";
+  const fps = settings.frameRate ? Math.round(settings.frameRate) : "?";
+  cameraInfoEl.textContent = `Câmera ativa: ${width}×${height} @ ${fps}fps`;
 }
 
 async function switchVideoTrack(newConstraints, urlUpdates) {
@@ -201,7 +217,20 @@ async function switchVideoTrack(newConstraints, urlUpdates) {
   mediaStream.addTrack(newVideoTrack);
   oldVideoTrack.stop();
 
-  document.getElementById("preview").srcObject = mediaStream;
+  const previewEl = document.getElementById("preview");
+  // Reassigning to the exact same MediaStream object reference sometimes
+  // doesn't repaint on Android WebViews after only the tracks changed
+  // underneath it — force a clean re-attach instead of relying on it to
+  // notice.
+  previewEl.srcObject = null;
+  previewEl.srcObject = mediaStream;
+  try {
+    await previewEl.play();
+  } catch (_err) {
+    // Autoplay can reject if the tab lost focus mid-switch; harmless, the
+    // element still has the right stream attached.
+  }
+  updateCameraInfo(newVideoTrack);
 
   const nextUrl = new URL(window.location.href);
   Object.entries(urlUpdates).forEach(([key, value]) => nextUrl.searchParams.set(key, value));
@@ -215,7 +244,10 @@ function switchCamera(newDeviceId) {
 qualitySelectEl.addEventListener("change", () => {
   quality = qualitySelectEl.value;
   const activeDeviceId = mediaStream.getVideoTracks()[0].getSettings().deviceId;
-  switchVideoTrack(buildVideoConstraints(activeDeviceId), { quality });
+  switchVideoTrack(buildVideoConstraints(activeDeviceId), { quality }).catch((err) => {
+    statusEl.textContent = `erro ao trocar qualidade: ${err.message}`;
+    console.error(err);
+  });
 });
 
 // Rolling buffer for "Lance" clips: a second MediaRecorder on the same
@@ -373,6 +405,7 @@ async function start() {
 
   mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
   document.getElementById("preview").srcObject = mediaStream;
+  updateCameraInfo(mediaStream.getVideoTracks()[0]);
   await applyDetectedQuality();
   await populateDeviceSelect(mediaStream);
   statusEl.textContent = "pronto pra gravar";
