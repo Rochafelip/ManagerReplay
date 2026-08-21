@@ -91,6 +91,17 @@
       fhd60: "FHD · 60fps",
     };
 
+    // Câmera 1 sempre grava com facingMode "environment" (traseira) e a
+    // câmera 2 com "user" (frontal) — combinação fixada em cameras.html.
+    const CAMERA_LABELS = {
+      1: "Câmera traseira",
+      2: "Câmera frontal",
+    };
+
+    function cameraLabel(cameraId) {
+      return CAMERA_LABELS[cameraId] || `Câmera ${cameraId}`;
+    }
+
     function escapeHtml(value) {
       return String(value).replace(/[&<>"']/g, (ch) => ({
         "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
@@ -126,7 +137,7 @@
         <div class="card rec-card">
           <div class="card-top">
             <span class="card-name">${escapeHtml(name)}</span>
-            <span class="card-camera">${ICON_CAMERA} Câmera ${escapeHtml(session.camera)}</span>
+            <span class="card-camera">${ICON_CAMERA} ${escapeHtml(cameraLabel(session.camera))}</span>
           </div>
           <div class="card-elapsed">${formatElapsed(session.elapsed_seconds)}</div>
           <div class="card-meta">

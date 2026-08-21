@@ -59,7 +59,8 @@ function formatElapsed(ms) {
 function updateStats() {
   const elapsedMs = Date.now() - startedAt;
   elapsedEl.textContent = formatElapsed(elapsedMs);
-  statsEl.textContent = `Modo: ${mode} · Câmera: ${cameraId} · Chunks enviados: ${chunksSent} · Total enviado: ${formatBytes(totalBytesSent)}`;
+  const cameraLabel = facing === "user" ? "Frontal" : "Traseira";
+  statsEl.textContent = `Modo: ${mode} · Câmera: ${cameraLabel} · Chunks enviados: ${chunksSent} · Total enviado: ${formatBytes(totalBytesSent)}`;
 
   if (elapsedMs >= LANCE_MIN_MS) {
     if (lanceButtonEl.disabled) {

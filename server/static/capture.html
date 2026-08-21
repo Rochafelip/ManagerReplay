@@ -55,8 +55,33 @@
        ========================================================= */
 
     .topbar {
+      justify-content: flex-start;
+      gap: 10px;
+
       padding: 14px 16px 6px;
       margin-bottom: 0;
+    }
+
+    .icon-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+
+      width: 34px;
+      height: 34px;
+      flex: none;
+
+      border: 1px solid var(--border);
+      border-radius: 9px;
+
+      background: var(--card-bg);
+      color: var(--text-secondary);
+
+      box-shadow: var(--shadow-sm);
+    }
+
+    .icon-button:active {
+      background: var(--bg);
     }
 
 
@@ -579,17 +604,6 @@
 
 
     /* =========================================================
-       VOLTAR (base em theme.css, só centraliza aqui)
-       ========================================================= */
-
-    a.back-link {
-      justify-content: center;
-      min-height: 44px;
-      margin-top: 4px;
-    }
-
-
-    /* =========================================================
        FLASH
        ========================================================= */
 
@@ -799,6 +813,9 @@
          ===================================================== -->
 
     <header class="topbar">
+      <a class="icon-button" href="cameras.html" aria-label="Voltar">
+        <svg class="icon" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+      </a>
       <div class="brand">
         <span class="brand-mark">
           <svg class="icon" viewBox="0 0 24 24"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
@@ -962,16 +979,6 @@
 
         </details>
 
-
-        <!-- Retorno -->
-        <a
-          class="back-link"
-          href="cameras.html"
-        >
-          <svg class="icon" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
-          Voltar ao menu
-        </a>
-
       </section>
 
     </div>
@@ -979,7 +986,7 @@
   </main>
 
 
-  <script src="client.js?v=17"></script>
+  <script src="client.js?v=18"></script>
 
 </body>
 </html>
