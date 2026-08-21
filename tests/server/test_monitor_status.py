@@ -59,6 +59,29 @@ def test_read_latest_status_raises_when_only_header(tmp_path: Path):
         read_latest_status(csv_path)
 
 
+def test_read_latest_status_skips_null_padded_row_from_unclean_shutdown(tmp_path: Path):
+    csv_path = tmp_path / "monitor.csv"
+    good_row = "2026-08-20 18:00:00,5.0,150,955,40.0,700,275,0,0,0,0\n"
+    corrupted_row = "\x00" * 200 + "2026-08-21 09:01:39,30.8,157,955,44.0,1200,400,0,0,0,0\n"
+    csv_path.write_text(CSV_HEADER + good_row + corrupted_row)
+
+    status = read_latest_status(csv_path)
+
+    assert status["timestamp"] == "2026-08-21 09:01:39"
+    assert status["cpu_pct"] == 30.8
+
+
+def test_read_latest_status_falls_back_when_last_row_unparseable(tmp_path: Path):
+    csv_path = tmp_path / "monitor.csv"
+    good_row = "2026-08-20 18:00:00,5.0,150,955,40.0,700,275,0,0,0,0\n"
+    truncated_row = "2026-08-20 18:00:02,8.2,164,955\n"
+    csv_path.write_text(CSV_HEADER + good_row + truncated_row)
+
+    status = read_latest_status(csv_path)
+
+    assert status["timestamp"] == "2026-08-20 18:00:00"
+
+
 def test_get_disk_usage_returns_plausible_totals(tmp_path: Path):
     usage = get_disk_usage(tmp_path)
 
