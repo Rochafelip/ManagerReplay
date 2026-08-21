@@ -36,3 +36,38 @@ def test_list_directory_rejects_path_traversal(tmp_path: Path):
 def test_list_directory_missing_path_raises_file_not_found(tmp_path: Path):
     with pytest.raises(FileNotFoundError):
         list_directory(tmp_path, "does-not-exist")
+
+
+def test_list_directory_groups_recording_chunk_parts_into_one_entry(tmp_path: Path):
+    (tmp_path / "camera2_2026-08-20T18-32-10_parte1.webm").write_bytes(b"12345")
+    (tmp_path / "camera2_2026-08-20T18-32-10_parte2.webm").write_bytes(b"67890")
+
+    entries = list_directory(tmp_path, "")
+
+    assert len(entries) == 1
+    assert entries[0]["name"] == "camera2_2026-08-20T18-32-10.webm"
+    assert entries[0]["is_dir"] is False
+    assert entries[0]["size"] == 10
+
+
+def test_list_directory_groups_parts_per_camera_and_session_separately(tmp_path: Path):
+    (tmp_path / "camera1_2026-08-20T18-32-10_parte1.webm").write_bytes(b"a")
+    (tmp_path / "camera2_2026-08-20T18-32-10_parte1.webm").write_bytes(b"bb")
+
+    entries = list_directory(tmp_path, "")
+
+    sizes = {e["name"]: e["size"] for e in entries}
+    assert sizes == {
+        "camera1_2026-08-20T18-32-10.webm": 1,
+        "camera2_2026-08-20T18-32-10.webm": 2,
+    }
+
+
+def test_list_directory_leaves_unmatched_files_and_dirs_untouched(tmp_path: Path):
+    (tmp_path / "camera-1").mkdir()
+    (tmp_path / "jogo_completo.webm").write_bytes(b"1234")
+
+    entries = list_directory(tmp_path, "")
+
+    names = {e["name"] for e in entries}
+    assert names == {"camera-1", "jogo_completo.webm"}

@@ -97,6 +97,68 @@ def test_files_route_serves_recordings_from_storage_root(tmp_path: Path, self_si
         thread.join(timeout=2)
 
 
+def test_files_route_streams_merged_recording_when_parts_exist(tmp_path: Path, self_signed_cert):
+    cert_path, key_path = self_signed_cert
+    storage_root = tmp_path / "storage"
+    day_dir = storage_root / "2026-08-20"
+    day_dir.mkdir(parents=True)
+    (day_dir / "camera2_2026-08-20T18-32-10_parte1.webm").write_bytes(b"parte-um-")
+    (day_dir / "camera2_2026-08-20T18-32-10_parte2.webm").write_bytes(b"parte-dois")
+
+    server, thread, port = _start_server(tmp_path, cert_path, key_path, storage_root)
+
+    try:
+        conn = _https_connection(port)
+        conn.request("GET", "/files/2026-08-20/camera2_2026-08-20T18-32-10.webm")
+        response = conn.getresponse()
+        body = response.read()
+        assert response.status == 200
+        assert body == b"parte-um-parte-dois"
+        assert response.getheader("Content-Type") == "video/webm"
+    finally:
+        server.shutdown()
+        thread.join(timeout=2)
+
+
+def test_files_route_returns_404_for_merged_name_with_no_matching_parts(tmp_path: Path, self_signed_cert):
+    cert_path, key_path = self_signed_cert
+    storage_root = tmp_path / "storage"
+    (storage_root / "2026-08-20").mkdir(parents=True)
+
+    server, thread, port = _start_server(tmp_path, cert_path, key_path, storage_root)
+
+    try:
+        conn = _https_connection(port)
+        conn.request("GET", "/files/2026-08-20/camera2_nope.webm")
+        response = conn.getresponse()
+        response.read()
+        assert response.status == 404
+    finally:
+        server.shutdown()
+        thread.join(timeout=2)
+
+
+def test_files_route_still_serves_a_literal_file_matching_merged_name_pattern(tmp_path: Path, self_signed_cert):
+    cert_path, key_path = self_signed_cert
+    storage_root = tmp_path / "storage"
+    day_dir = storage_root / "2026-08-20"
+    day_dir.mkdir(parents=True)
+    (day_dir / "camera2_2026-08-20T18-32-10.webm").write_bytes(b"already-merged-file")
+
+    server, thread, port = _start_server(tmp_path, cert_path, key_path, storage_root)
+
+    try:
+        conn = _https_connection(port)
+        conn.request("GET", "/files/2026-08-20/camera2_2026-08-20T18-32-10.webm")
+        response = conn.getresponse()
+        body = response.read()
+        assert response.status == 200
+        assert body == b"already-merged-file"
+    finally:
+        server.shutdown()
+        thread.join(timeout=2)
+
+
 def test_files_html_page_is_served_from_static_dir_not_storage_root(tmp_path: Path, self_signed_cert):
     cert_path, key_path = self_signed_cert
     static_dir = tmp_path / "static"

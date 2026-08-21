@@ -1,17 +1,24 @@
 import json
+import re
+import shutil
 import ssl
 import threading
 import time
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 from server.events import record_event
 from server.file_listing import list_directory
 from server.monitor_status import get_disk_usage, read_live_status
 from server.sessions import list_sessions, record_chunk, start_session, stop_session
-from server.storage import build_day_dir, save_chunk
+from server.storage import build_day_dir, find_session_parts, save_chunk
+
+# Matches the merged/virtual recording name produced by file_listing
+# (e.g. "camera2_2026-08-20T18-32-10.webm"), as opposed to a literal
+# "..._parteN.webm" chunk file.
+_MERGED_RECORDING_PATTERN = re.compile(r"^camera(\d+)_(.+)\.webm$")
 
 
 class ChunksUploadHandler(SimpleHTTPRequestHandler):
@@ -41,7 +48,44 @@ class ChunksUploadHandler(SimpleHTTPRequestHandler):
         if self.path.startswith("/recording-status"):
             self._handle_recording_status()
             return
+        if self.path.startswith("/files/") and self._serve_merged_recording():
+            return
         super().do_GET()
+
+    def _serve_merged_recording(self) -> bool:
+        """Streams a recording's chunks concatenated as one download, for
+        the virtual filenames file_listing groups them under. Returns False
+        (falling through to the normal static-file handler) whenever a real
+        file already exists at that path, or the name/parts don't match."""
+        rel_path = unquote(urlparse(self.path).path[len("/files/"):])
+        if (self.storage_root / rel_path).exists():
+            return False
+
+        rel = Path(rel_path)
+        match = _MERGED_RECORDING_PATTERN.match(rel.name)
+        if not match:
+            return False
+
+        day_dir = (self.storage_root / rel.parent).resolve()
+        storage_root = self.storage_root.resolve()
+        if day_dir != storage_root and storage_root not in day_dir.parents:
+            return False
+
+        camera_id, session_id = match.group(1), match.group(2)
+        parts = find_session_parts(day_dir, camera_id, session_id)
+        if not parts:
+            return False
+
+        total_size = sum(part.stat().st_size for part in parts)
+        self.send_response(200)
+        self.send_header("Content-Type", "video/webm")
+        self.send_header("Content-Length", str(total_size))
+        self.send_header("Content-Disposition", f'attachment; filename="{rel.name}"')
+        self.end_headers()
+        for part in parts:
+            with part.open("rb") as part_file:
+                shutil.copyfileobj(part_file, self.wfile)
+        return True
 
     def _handle_recording_status(self):
         with self.sessions_lock:

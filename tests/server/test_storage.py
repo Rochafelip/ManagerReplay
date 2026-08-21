@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from server.storage import build_day_dir, save_chunk
+from server.storage import build_day_dir, find_session_parts, save_chunk
 
 
 def test_build_day_dir_creates_path_from_session_id_date(tmp_path: Path):
@@ -36,3 +36,22 @@ def test_save_chunk_sanitizes_unsafe_session_id(tmp_path: Path):
 
     assert path.parent == tmp_path
     assert "/" not in path.name and ".." not in path.name
+
+
+def test_find_session_parts_returns_paths_sorted_by_part_number(tmp_path: Path):
+    save_chunk(tmp_path, camera_id=2, session_id="2026-08-20T18-32-10", part_number=2, data=b"b")
+    save_chunk(tmp_path, camera_id=2, session_id="2026-08-20T18-32-10", part_number=1, data=b"a")
+    save_chunk(tmp_path, camera_id=2, session_id="2026-08-20T18-32-10", part_number=10, data=b"j")
+    save_chunk(tmp_path, camera_id=1, session_id="2026-08-20T18-32-10", part_number=1, data=b"other-camera")
+
+    parts = find_session_parts(tmp_path, camera_id="2", session_id="2026-08-20T18-32-10")
+
+    assert [p.name for p in parts] == [
+        "camera2_2026-08-20T18-32-10_parte1.webm",
+        "camera2_2026-08-20T18-32-10_parte2.webm",
+        "camera2_2026-08-20T18-32-10_parte10.webm",
+    ]
+
+
+def test_find_session_parts_returns_empty_list_when_none_match(tmp_path: Path):
+    assert find_session_parts(tmp_path, camera_id="1", session_id="nope") == []
