@@ -50,6 +50,25 @@ def test_list_directory_groups_recording_chunk_parts_into_one_entry(tmp_path: Pa
     assert entries[0]["size"] == 10
 
 
+def test_list_directory_estimates_duration_as_30s_per_part(tmp_path: Path):
+    (tmp_path / "camera2_2026-08-20T18-32-10_parte1.webm").write_bytes(b"a")
+    (tmp_path / "camera2_2026-08-20T18-32-10_parte2.webm").write_bytes(b"b")
+    (tmp_path / "camera2_2026-08-20T18-32-10_parte3.webm").write_bytes(b"c")
+
+    entries = list_directory(tmp_path, "")
+
+    assert entries[0]["duration_seconds"] == 90
+
+
+def test_list_directory_duration_is_none_for_non_grouped_entries(tmp_path: Path):
+    (tmp_path / "camera-1").mkdir()
+    (tmp_path / "jogo_completo.webm").write_bytes(b"1234")
+
+    entries = list_directory(tmp_path, "")
+
+    assert all(e["duration_seconds"] is None for e in entries)
+
+
 def test_list_directory_groups_parts_per_camera_and_session_separately(tmp_path: Path):
     (tmp_path / "camera1_2026-08-20T18-32-10_parte1.webm").write_bytes(b"a")
     (tmp_path / "camera2_2026-08-20T18-32-10_parte1.webm").write_bytes(b"bb")
@@ -85,4 +104,5 @@ def test_list_directory_does_not_group_lance_clip_files(tmp_path: Path):
         "is_dir": False,
         "size": 4,
         "mtime": entries[0]["mtime"],
+        "duration_seconds": None,
     }]

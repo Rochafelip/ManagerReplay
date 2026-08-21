@@ -256,7 +256,13 @@ def test_files_list_route_returns_directory_entries(tmp_path: Path, self_signed_
         response = conn.getresponse()
         body = json.loads(response.read())
         assert response.status == 200
-        assert body == [{"name": "chunk-0000.webm", "is_dir": False, "size": 4, "mtime": body[0]["mtime"]}]
+        assert body == [{
+            "name": "chunk-0000.webm",
+            "is_dir": False,
+            "size": 4,
+            "mtime": body[0]["mtime"],
+            "duration_seconds": None,
+        }]
     finally:
         server.shutdown()
         thread.join(timeout=2)

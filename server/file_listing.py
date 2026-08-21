@@ -7,6 +7,14 @@ from pathlib import Path
 # per (camera, session) recording instead of showing every part.
 _CHUNK_PART_PATTERN = re.compile(r"^camera(\d+)_(.+)_parte(\d+)\.webm$")
 
+# Each chunk is a MediaRecorder timeslice flush (client.js: recorder.start(30000)),
+# so every part but the last one is ~30s. Estimating total duration as
+# parts_count * 30s avoids probing the actual video (would need ffmpeg/ffprobe,
+# a dependency this project deliberately avoids on the Pi 3B) at the cost of
+# being off by up to ~30s — usually much less — since the last part is often
+# shorter than a full 30s window.
+CHUNK_DURATION_SECONDS = 30
+
 
 def _group_recording_parts(entries: list[dict]) -> list[dict]:
     grouped = {}
@@ -15,13 +23,14 @@ def _group_recording_parts(entries: list[dict]) -> list[dict]:
     for entry in entries:
         match = None if entry["is_dir"] else _CHUNK_PART_PATTERN.match(entry["name"])
         if not match:
-            passthrough.append(entry)
+            passthrough.append({**entry, "duration_seconds": None})
             continue
 
         camera_id, session_id = match.group(1), match.group(2)
-        group = grouped.setdefault((camera_id, session_id), {"size": 0, "mtime": 0.0})
+        group = grouped.setdefault((camera_id, session_id), {"size": 0, "mtime": 0.0, "parts": 0})
         group["size"] += entry["size"]
         group["mtime"] = max(group["mtime"], entry["mtime"])
+        group["parts"] += 1
 
     merged = [
         {
@@ -29,6 +38,7 @@ def _group_recording_parts(entries: list[dict]) -> list[dict]:
             "is_dir": False,
             "size": group["size"],
             "mtime": group["mtime"],
+            "duration_seconds": group["parts"] * CHUNK_DURATION_SECONDS,
         }
         for (camera_id, session_id), group in grouped.items()
     ]
