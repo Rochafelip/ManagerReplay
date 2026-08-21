@@ -142,6 +142,24 @@ cp "$(mkcert -CAROOT)/rootCA.pem" ~/managerreplay/server/static/certs/rootCA.pem
 
 **Nunca copie `rootCA-key.pem` (a chave privada da CA) nem os arquivos `*-key.pem` de `~/managerreplay/certs/` pra dentro de `server/static/` — esses arquivos ficam expostos publicamente por HTTP, e a chave privada da CA compromete a segurança de qualquer aparelho que confiar no certificado.**
 
+## Limitações conhecidas
+
+### 60fps nem sempre é entregue de verdade, mesmo quando o celular suporta
+
+O seletor de qualidade em `capture.html` detecta as resoluções que a câmera do aparelho suporta via `track.getCapabilities()` e monta a lista de opções (HD/FHD/4K × 30/60fps) a partir disso — mas **não confie na capability de `frameRate`** reportada por essa API no Android: em testes com um Galaxy S20 FE ela é sistematicamente pouco confiável (chega a reportar `max: 30` num sensor que grava 60fps de verdade no app de câmera nativo). Por isso `client.js` ignora `frameRate` na hora de decidir quais opções mostrar (só filtra por `width`/`height`, que é bem mais estável) e sempre oferece 30 e 60fps juntos pra qualquer resolução suportada.
+
+Na hora de efetivamente pedir a câmera, o código tenta primeiro `frameRate: { min: X }` (exigência forte — falha com `OverconstrainedError` se o aparelho não aguentar) e só cai pro `frameRate: { ideal: X }` (sugestão fraca, nunca falha) se isso não funcionar — ver `requestVideoStream()` em `client.js`. Mesmo assim, em alguns aparelhos (S20 FE incluso) **60fps nunca é entregue via navegador em nenhuma resolução**, mesmo forçando `min`. A causa mais provável: muitos fabricantes Android (Samsung entre eles) só expõem taxas de quadro altas através de uma sessão de captura especial do Camera2 (`CameraConstrainedHighSpeedCaptureSession`), que fica reservada pro app de câmera nativo/vendor — o Chrome (e navegadores em geral) só abre uma sessão de captura "normal", que nesses aparelhos tem teto de 30fps independente do que for pedido.
+
+A tela de gravação assume essa realidade e só **avisa** quando o fps pedido não bate com o entregue (linha "Câmera ativa" em Detalhes técnicos), em vez de fingir que deu certo — ver `updateCameraInfo()` em `client.js`.
+
+**Se um futuro desenvolvedor for atrás de 60fps de verdade**, nessa ordem de custo/risco:
+
+1. **Teste em outros navegadores no mesmo aparelho** (Samsung Internet, Firefox Android) — implementações diferentes de captura de câmera às vezes conseguem acessar modos que o Chrome não acessa. Grátis, vale testar antes de qualquer coisa.
+2. **Teste em outros aparelhos/marcas** — pode ser uma limitação específica do S20 FE (ou da geração Samsung dele), não universal. Confirme em pelo menos 2-3 modelos diferentes antes de assumir que é um problema geral.
+3. **App nativo Android usando Camera2 diretamente** (`CameraConstrainedHighSpeedCaptureSession`) — única forma confiável de garantir 60fps+. Implica abandonar o modelo atual de "abre o link no navegador, sem instalar nada", que é um dos pilares centrais do produto (ver `ContextoProjeto.md`) — e não resolve pra iPhone, que teria que continuar em 30fps de qualquer forma (Safari/iOS tem a mesma limitação de sessão de captura restrita, e o iPhone nunca pode ser hub, só câmera-cliente). Avalie se o ganho (câmera lenta nos lances) compensa esse custo antes de embarcar nisso.
+
+Na prática, 30fps é o padrão de praticamente toda transmissão esportiva e resolve bem o caso de uso — só vale perseguir 60fps se houver uma necessidade concreta de slow-motion nos replays.
+
 ## Estado do projeto
 
 O roadmap original (Fases 00–10) está em [`ContextoProjeto.md`](ContextoProjeto.md), seção 9. A validação de capacidade de hardware (Pi aguentando 2 câmeras simultâneas) foi pausada em favor de já estruturar o produto — ainda é uma pergunta em aberto se/quando o time decidir retomar. Fora do escopo por enquanto: SQLite (eventos ainda são JSON Lines), highlights automáticos (cortar 30s antes/depois de um lance), modo WebRTC na UI. Specs e planos de cada decisão de design ficam em [`docs/superpowers/`](docs/superpowers/).
