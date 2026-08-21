@@ -205,18 +205,7 @@ function updateCameraInfo(track) {
   cameraInfoEl.textContent = `Câmera ativa: ${width}×${height} @ ${fps}fps`;
 }
 
-async function switchVideoTrack(newConstraints, urlUpdates) {
-  const newStream = await navigator.mediaDevices.getUserMedia({ video: newConstraints, audio: false });
-  const newVideoTrack = newStream.getVideoTracks()[0];
-  const oldVideoTrack = mediaStream.getVideoTracks()[0];
-
-  // Swap the track on the same MediaStream object instead of reloading the
-  // page, so an in-progress MediaRecorder keeps recording continuously
-  // (same session, same part sequence) instead of starting a new file series.
-  mediaStream.removeTrack(oldVideoTrack);
-  mediaStream.addTrack(newVideoTrack);
-  oldVideoTrack.stop();
-
+function refreshPreview() {
   const previewEl = document.getElementById("preview");
   // Reassigning to the exact same MediaStream object reference sometimes
   // doesn't repaint on Android WebViews after only the tracks changed
@@ -224,12 +213,42 @@ async function switchVideoTrack(newConstraints, urlUpdates) {
   // notice.
   previewEl.srcObject = null;
   previewEl.srcObject = mediaStream;
-  try {
-    await previewEl.play();
-  } catch (_err) {
+  return previewEl.play().catch(() => {
     // Autoplay can reject if the tab lost focus mid-switch; harmless, the
     // element still has the right stream attached.
+  });
+}
+
+async function switchVideoTrack(newConstraints, urlUpdates) {
+  const oldVideoTrack = mediaStream.getVideoTracks()[0];
+  const oldDeviceId = oldVideoTrack.getSettings().deviceId;
+
+  // Release the current camera BEFORE requesting the new one. Phones with
+  // multiple rear lenses (normal/wide/macro) typically share one hardware
+  // pipeline and refuse to open a second stream while the first is still
+  // active — that's the "Could not start video source" error seen on a
+  // Galaxy S20 FE when this used to request-then-release.
+  oldVideoTrack.stop();
+  mediaStream.removeTrack(oldVideoTrack);
+
+  let newVideoTrack;
+  try {
+    const newStream = await navigator.mediaDevices.getUserMedia({ video: newConstraints, audio: false });
+    newVideoTrack = newStream.getVideoTracks()[0];
+  } catch (err) {
+    // Couldn't get the requested lens — reopen the one we just released
+    // instead of leaving the preview (and any in-progress recording) dead.
+    const restoredStream = await navigator.mediaDevices.getUserMedia({
+      video: buildVideoConstraints(oldDeviceId),
+      audio: false,
+    });
+    mediaStream.addTrack(restoredStream.getVideoTracks()[0]);
+    await refreshPreview();
+    throw err;
   }
+
+  mediaStream.addTrack(newVideoTrack);
+  await refreshPreview();
   updateCameraInfo(newVideoTrack);
 
   const nextUrl = new URL(window.location.href);
