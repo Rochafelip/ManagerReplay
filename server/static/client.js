@@ -122,12 +122,20 @@ function updateStats() {
   }
 }
 
-function buildVideoConstraints(overrideDeviceId) {
+function buildVideoConstraints(overrideDeviceId, { strictFrameRate = false } = {}) {
   const preset = QUALITY_PRESETS[quality];
   const base = {
     width: { ideal: preset.width },
     height: { ideal: preset.height },
-    frameRate: { ideal: preset.frameRate },
+    // "ideal" alone is just a soft hint — Chrome/Android has been observed
+    // silently settling for a lower fps (e.g. staying at 30 when 60 was
+    // requested) instead of honoring it. Forcing "min" makes it a real
+    // requirement: either the device delivers it, or getUserMedia throws
+    // OverconstrainedError and callers can react instead of getting an
+    // unfulfilled request with no feedback.
+    frameRate: strictFrameRate
+      ? { min: preset.frameRate, ideal: preset.frameRate }
+      : { ideal: preset.frameRate },
   };
   const targetDeviceId = overrideDeviceId || deviceId;
   return targetDeviceId
@@ -135,7 +143,23 @@ function buildVideoConstraints(overrideDeviceId) {
     : { ...base, facingMode: { ideal: facing } };
 }
 
-const constraints = { video: buildVideoConstraints(), audio: false };
+async function requestVideoStream(overrideDeviceId) {
+  try {
+    return await navigator.mediaDevices.getUserMedia({
+      video: buildVideoConstraints(overrideDeviceId, { strictFrameRate: true }),
+      audio: false,
+    });
+  } catch (err) {
+    if (err.name !== "OverconstrainedError") throw err;
+    // The device genuinely can't hit that fps at this resolution — fall
+    // back to the soft request so the switch still succeeds, just at
+    // whatever fps the camera actually delivers.
+    return navigator.mediaDevices.getUserMedia({
+      video: buildVideoConstraints(overrideDeviceId, { strictFrameRate: false }),
+      audio: false,
+    });
+  }
+}
 
 const FACING_LABEL_HINTS = {
   environment: ["back", "traseira", "rear", "environment"],
@@ -219,7 +243,7 @@ function refreshPreview() {
   });
 }
 
-async function switchVideoTrack(newConstraints, urlUpdates) {
+async function switchVideoTrack(overrideDeviceId, urlUpdates) {
   const oldVideoTrack = mediaStream.getVideoTracks()[0];
   const oldDeviceId = oldVideoTrack.getSettings().deviceId;
 
@@ -233,7 +257,7 @@ async function switchVideoTrack(newConstraints, urlUpdates) {
 
   let newVideoTrack;
   try {
-    const newStream = await navigator.mediaDevices.getUserMedia({ video: newConstraints, audio: false });
+    const newStream = await requestVideoStream(overrideDeviceId);
     newVideoTrack = newStream.getVideoTracks()[0];
   } catch (err) {
     // Couldn't get the requested lens — reopen the one we just released
@@ -257,13 +281,13 @@ async function switchVideoTrack(newConstraints, urlUpdates) {
 }
 
 function switchCamera(newDeviceId) {
-  return switchVideoTrack(buildVideoConstraints(newDeviceId), { device: newDeviceId });
+  return switchVideoTrack(newDeviceId, { device: newDeviceId });
 }
 
 qualitySelectEl.addEventListener("change", () => {
   quality = qualitySelectEl.value;
   const activeDeviceId = mediaStream.getVideoTracks()[0].getSettings().deviceId;
-  switchVideoTrack(buildVideoConstraints(activeDeviceId), { quality }).catch((err) => {
+  switchVideoTrack(activeDeviceId, { quality }).catch((err) => {
     statusEl.textContent = `erro ao trocar qualidade: ${err.message}`;
     console.error(err);
   });
@@ -416,13 +440,17 @@ async function applyDetectedQuality() {
 
   if (resolvedQuality === quality) return;
   quality = resolvedQuality;
-  await switchVideoTrack(buildVideoConstraints(activeTrack.getSettings().deviceId), { quality });
+  await switchVideoTrack(activeTrack.getSettings().deviceId, { quality });
 }
 
 async function start() {
   await requestWakeLock();
 
-  mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+  // Uses the strict (fps-enforcing) request from the very first capture —
+  // otherwise the default quality already "matching" (hd60) meant
+  // applyDetectedQuality's own strict re-request never even ran, and the
+  // camera was left on whatever fps the soft initial request settled for.
+  mediaStream = await requestVideoStream();
   document.getElementById("preview").srcObject = mediaStream;
   updateCameraInfo(mediaStream.getVideoTracks()[0]);
   await applyDetectedQuality();
