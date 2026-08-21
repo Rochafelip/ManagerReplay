@@ -55,16 +55,22 @@ if (!QUALITY_PRESETS[quality]) quality = "hd60";
 
 // supportedIds is null while getUserMedia hasn't resolved yet; the actual
 // quality list is only built once we can inspect the camera's real limits.
+//
+// Only gates on width/height — capabilities.frameRate.max is unreliable on
+// Android Chrome (observed on a Galaxy S20 FE reporting max 30 for a sensor
+// that does 60fps just fine): it reflects whatever format got negotiated
+// for the current request, not the device's real ceiling. frameRate stays
+// an "ideal" constraint everywhere it's used (see buildVideoConstraints),
+// so it's never fatal to offer 60fps and let the browser do its best.
 function supportedQualityIds(capabilities) {
-  if (!capabilities || !capabilities.width || !capabilities.height || !capabilities.frameRate) {
+  if (!capabilities || !capabilities.width || !capabilities.height) {
     return FALLBACK_QUALITY_IDS;
   }
   const maxWidth = capabilities.width.max || 0;
   const maxHeight = capabilities.height.max || 0;
-  const maxFrameRate = capabilities.frameRate.max || 0;
   const supported = Object.keys(QUALITY_PRESETS).filter((id) => {
     const preset = QUALITY_PRESETS[id];
-    return maxWidth >= preset.width && maxHeight >= preset.height && maxFrameRate >= preset.frameRate - 1;
+    return maxWidth >= preset.width && maxHeight >= preset.height;
   });
   return supported.length > 0 ? supported : FALLBACK_QUALITY_IDS;
 }
