@@ -2,6 +2,7 @@ import json
 import re
 import shutil
 import ssl
+import subprocess
 import threading
 import time
 from datetime import datetime, timezone
@@ -213,6 +214,8 @@ class ChunksUploadHandler(SimpleHTTPRequestHandler):
             self._handle_session_stop()
         elif self.path.startswith("/storage-select"):
             self._handle_storage_select()
+        elif self.path.startswith("/storage-eject"):
+            self._handle_storage_eject()
         else:
             self.send_response(404)
             self.end_headers()
@@ -243,6 +246,48 @@ class ChunksUploadHandler(SimpleHTTPRequestHandler):
             new_root = choices[choice_path]
             new_root.mkdir(parents=True, exist_ok=True)
             ChunksUploadHandler.storage_root = new_root
+
+        self.send_response(204)
+        self.end_headers()
+
+    def _handle_storage_eject(self):
+        query = parse_qs(urlparse(self.path).query)
+        try:
+            mountpoint = query["path"][0]
+        except (KeyError, IndexError):
+            self.send_response(400)
+            self.end_headers()
+            return
+
+        known_mountpoints = {device["mountpoint"] for device in detect_external_storage()}
+        if mountpoint not in known_mountpoints:
+            self.send_response(400)
+            self.end_headers()
+            self.wfile.write(b"not a currently mounted external drive")
+            return
+
+        with self.sessions_lock:
+            if self.sessions_registry:
+                self.send_response(409)
+                self.end_headers()
+                self.wfile.write(b"cannot eject while a camera is recording")
+                return
+
+            # If recordings are currently going to this drive, fall back to
+            # the SD card first — safe to do here since we just confirmed
+            # (holding the same lock) that nothing is actively recording.
+            if str(self.storage_root).startswith(mountpoint):
+                ChunksUploadHandler.storage_root = self.default_storage_root
+
+        try:
+            subprocess.run(["sync"], check=True, capture_output=True, text=True)
+            subprocess.run(["sudo", "umount", mountpoint], check=True, capture_output=True, text=True)
+        except subprocess.CalledProcessError as err:
+            self.send_response(500)
+            self.end_headers()
+            detail = err.stderr or str(err)
+            self.wfile.write(f"falha ao desmontar: {detail}".encode("utf-8"))
+            return
 
         self.send_response(204)
         self.end_headers()

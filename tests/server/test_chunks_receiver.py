@@ -490,3 +490,124 @@ def test_storage_select_rejects_switch_while_a_camera_is_recording(tmp_path: Pat
             thread.join(timeout=2)
 
     assert response.status == 409
+
+
+def test_storage_eject_syncs_and_unmounts_the_device(tmp_path: Path, self_signed_cert):
+    cert_path, key_path = self_signed_cert
+    external_mount = tmp_path / "media" / "hd1"
+    external_mount.mkdir(parents=True)
+    fake_external = [{"device": "/dev/sda1", "mountpoint": str(external_mount), "fstype": "exfat", "total_mb": 2000000, "free_mb": 1000000}]
+
+    with patch("server.chunks_receiver.detect_external_storage", return_value=fake_external), \
+         patch("server.chunks_receiver.subprocess.run") as mock_run:
+        server, thread, port = _start_server(tmp_path, cert_path, key_path)
+        try:
+            conn = _https_connection(port)
+            conn.request("POST", f"/storage-eject?path={external_mount}")
+            response = conn.getresponse()
+            response.read()
+        finally:
+            server.shutdown()
+            thread.join(timeout=2)
+
+    assert response.status == 204
+    commands = [call.args[0] for call in mock_run.call_args_list]
+    assert ["sync"] in commands
+    assert any(cmd[:2] == ["sudo", "umount"] and str(external_mount) in cmd for cmd in commands)
+
+
+def test_storage_eject_switches_back_to_default_when_ejecting_the_active_drive(tmp_path: Path, self_signed_cert):
+    cert_path, key_path = self_signed_cert
+    storage_root = tmp_path / "storage"
+    external_mount = tmp_path / "media" / "hd1"
+    external_mount.mkdir(parents=True)
+    fake_external = [{"device": "/dev/sda1", "mountpoint": str(external_mount), "fstype": "exfat", "total_mb": 2000000, "free_mb": 1000000}]
+
+    with patch("server.chunks_receiver.detect_external_storage", return_value=fake_external), \
+         patch("server.chunks_receiver.subprocess.run"):
+        server, thread, port = _start_server(tmp_path, cert_path, key_path, storage_root)
+        try:
+            conn = _https_connection(port)
+            conn.request("POST", f"/storage-select?path={external_mount}")
+            conn.getresponse().read()
+
+            conn = _https_connection(port)
+            conn.request("POST", f"/storage-eject?path={external_mount}")
+            conn.getresponse().read()
+
+            conn = _https_connection(port)
+            conn.request("POST", "/upload?camera=1&session=2026-08-21T10-00-00&part=1", body=b"after-eject")
+            conn.getresponse().read()
+        finally:
+            server.shutdown()
+            thread.join(timeout=2)
+
+    written = storage_root / "2026-08-21" / "camera1_2026-08-21T10-00-00_parte1.webm"
+    assert written.read_bytes() == b"after-eject"
+
+
+def test_storage_eject_rejects_unknown_mountpoint(tmp_path: Path, self_signed_cert):
+    cert_path, key_path = self_signed_cert
+
+    with patch("server.chunks_receiver.detect_external_storage", return_value=[]):
+        server, thread, port = _start_server(tmp_path, cert_path, key_path)
+        try:
+            conn = _https_connection(port)
+            conn.request("POST", "/storage-eject?path=/nope/not-mounted")
+            response = conn.getresponse()
+            response.read()
+        finally:
+            server.shutdown()
+            thread.join(timeout=2)
+
+    assert response.status == 400
+
+
+def test_storage_eject_rejects_while_a_camera_is_recording(tmp_path: Path, self_signed_cert):
+    cert_path, key_path = self_signed_cert
+    external_mount = tmp_path / "media" / "hd1"
+    external_mount.mkdir(parents=True)
+    fake_external = [{"device": "/dev/sda1", "mountpoint": str(external_mount), "fstype": "exfat", "total_mb": 2000000, "free_mb": 1000000}]
+
+    with patch("server.chunks_receiver.detect_external_storage", return_value=fake_external):
+        server, thread, port = _start_server(tmp_path, cert_path, key_path)
+        try:
+            conn = _https_connection(port)
+            conn.request("POST", "/session-start?camera=1&name=Carlos&quality=hd30")
+            conn.getresponse().read()
+
+            conn = _https_connection(port)
+            conn.request("POST", f"/storage-eject?path={external_mount}")
+            response = conn.getresponse()
+            response.read()
+        finally:
+            server.shutdown()
+            thread.join(timeout=2)
+
+    assert response.status == 409
+
+
+def test_storage_eject_returns_500_when_unmount_fails(tmp_path: Path, self_signed_cert):
+    cert_path, key_path = self_signed_cert
+    external_mount = tmp_path / "media" / "hd1"
+    external_mount.mkdir(parents=True)
+    fake_external = [{"device": "/dev/sda1", "mountpoint": str(external_mount), "fstype": "exfat", "total_mb": 2000000, "free_mb": 1000000}]
+
+    def fake_run(cmd, **kwargs):
+        if cmd[:2] == ["sudo", "umount"]:
+            raise subprocess.CalledProcessError(1, cmd, stderr="target is busy")
+        return subprocess.CompletedProcess(cmd, 0)
+
+    with patch("server.chunks_receiver.detect_external_storage", return_value=fake_external), \
+         patch("server.chunks_receiver.subprocess.run", side_effect=fake_run):
+        server, thread, port = _start_server(tmp_path, cert_path, key_path)
+        try:
+            conn = _https_connection(port)
+            conn.request("POST", f"/storage-eject?path={external_mount}")
+            response = conn.getresponse()
+            response.read()
+        finally:
+            server.shutdown()
+            thread.join(timeout=2)
+
+    assert response.status == 500

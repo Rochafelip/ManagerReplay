@@ -53,14 +53,21 @@
     .storage-option {
       display: flex;
       align-items: center;
+      justify-content: space-between;
       gap: 10px;
       padding: 8px 0;
-      cursor: pointer;
     }
     .storage-option + .storage-option {
       border-top: 1px solid var(--border);
     }
-    .storage-option input[type="radio"] {
+    .storage-option-radio {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      cursor: pointer;
+    }
+    .storage-option-radio input[type="radio"] {
       flex: none;
       width: 18px;
       height: 18px;
@@ -74,6 +81,23 @@
     .storage-option-label { font-size: 0.86rem; font-weight: 700; overflow-wrap: break-word; }
     .storage-option.selected .storage-option-label { color: var(--accent); }
     .storage-option-meta { font-size: 0.74rem; color: var(--text-muted); margin-top: 2px; }
+
+    .storage-eject-button {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex: none;
+      padding: 7px 10px;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      background: var(--card-bg);
+      color: var(--text-secondary);
+      font-size: 0.76rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .storage-eject-button:active { background: var(--bg); }
+    .storage-eject-button:disabled { opacity: 0.5; cursor: not-allowed; }
 
     .storage-select-button {
       display: block;
@@ -227,6 +251,7 @@
     }
 
     const ICON_DRIVE = '<svg class="icon" viewBox="0 0 24 24"><line x1="22" x2="2" y1="12" y2="12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/><line x1="6" x2="6.01" y1="16" y2="16"/><line x1="10" x2="10.01" y1="16" y2="16"/></svg>';
+    const ICON_EJECT = '<svg class="icon" viewBox="0 0 24 24"><path d="m12 3 8 10H4z"/><path d="M5 17h14"/></svg>';
 
     function escapeHtml(value) {
       return String(value).replace(/[&<>"']/g, (ch) => ({
@@ -241,16 +266,20 @@
     }
 
     function renderStorageSelector(storageOptions) {
-      const rows = storageOptions.options.map((opt) => {
+      const rows = storageOptions.options.map((opt, index) => {
         const isCurrent = opt.path === storageOptions.current;
+        const isExternal = index > 0; // options[0] é sempre o cartão SD (ver _handle_storage_options)
         return `
-          <label class="storage-option ${isCurrent ? "selected" : ""}">
-            <input type="radio" name="storage-choice" value="${escapeHtml(opt.path)}" ${isCurrent ? "checked" : ""} />
-            <span class="storage-option-body">
-              <span class="storage-option-label">${escapeHtml(opt.label)}${isCurrent ? " — em uso" : ""}</span>
-              <span class="storage-option-meta">${formatStorage(opt.disk_free_mb)} livres de ${formatStorage(opt.disk_total_mb)}</span>
-            </span>
-          </label>
+          <div class="storage-option ${isCurrent ? "selected" : ""}">
+            <label class="storage-option-radio">
+              <input type="radio" name="storage-choice" value="${escapeHtml(opt.path)}" ${isCurrent ? "checked" : ""} />
+              <span class="storage-option-body">
+                <span class="storage-option-label">${escapeHtml(opt.label)}${isCurrent ? " — em uso" : ""}</span>
+                <span class="storage-option-meta">${formatStorage(opt.disk_free_mb)} livres de ${formatStorage(opt.disk_total_mb)}</span>
+              </span>
+            </label>
+            ${isExternal ? `<button type="button" class="storage-eject-button" data-path="${escapeHtml(opt.path)}">${ICON_EJECT} Ejetar</button>` : ""}
+          </div>
         `;
       }).join("");
 
@@ -293,6 +322,35 @@
         } catch (err) {
           messageEl.textContent = `Erro: ${err.message}`;
           selectButtonEl.disabled = false;
+        }
+      });
+
+      listEl.addEventListener("click", async (event) => {
+        const ejectButton = event.target.closest(".storage-eject-button");
+        if (!ejectButton) return;
+
+        const path = ejectButton.dataset.path;
+        const confirmed = confirm(`Ejetar "${path}"? Só faça isso depois de parar qualquer gravação nesse local — depois é seguro remover o dispositivo fisicamente.`);
+        if (!confirmed) return;
+
+        ejectButton.disabled = true;
+        messageEl.textContent = "Ejetando...";
+        try {
+          const response = await fetch(`/storage-eject?path=${encodeURIComponent(path)}`, { method: "POST" });
+          if (response.status === 409) {
+            messageEl.textContent = "Não dá pra ejetar com uma câmera gravando agora.";
+            ejectButton.disabled = false;
+            return;
+          }
+          if (!response.ok) {
+            const detail = await response.text();
+            throw new Error(detail || "não foi possível ejetar");
+          }
+          messageEl.textContent = "Pronto — pode remover o dispositivo com segurança.";
+          measure();
+        } catch (err) {
+          messageEl.textContent = `Erro: ${err.message}`;
+          ejectButton.disabled = false;
         }
       });
     }

@@ -115,6 +115,17 @@ Detalhes técnicos de como isso funciona (`chunks_receiver.py`):
 - **Não é persistente** entre reinícios do servidor — sempre volta pro cartão SD no boot. Isso é deliberado: se o pendrive for removido enquanto a Pi está desligada, ela ainda sobe normalmente gravando no SD, em vez de falhar tentando um caminho que não existe mais.
 - A tela de Arquivos (`files.html`) e a listagem de lances sempre refletem o `storage_root` **atualmente ativo** — não existe uma visão unificada mostrando gravações de ambos os locais ao mesmo tempo. Se trocar de local no meio do dia, as gravações feitas antes da troca continuam existindo no local antigo, só não aparecem mais em Arquivos até trocar de volta.
 
+O mesmo card tem um botão **"Ejetar"** ao lado de cada drive externo — roda `sync` (força gravar tudo que ainda estiver em cache) e depois `umount`, pra poder tirar o pendrive/SSD fisicamente sem risco de corromper o sistema de arquivos. Recusado com `409` se alguma câmera estiver gravando; se o drive ejetado era o destino ativo, a gravação já volta pro cartão SD automaticamente antes de desmontar.
+
+**Pré-requisito**: como o servidor roda como o usuário `rocha` (não root), desmontar exige uma permissão de `sudo` sem senha pro `umount`, configurada uma vez na Pi:
+
+```bash
+echo "rocha ALL=(ALL) NOPASSWD: /usr/bin/umount /media/*" | sudo tee /etc/sudoers.d/managerreplay-umount
+sudo chmod 440 /etc/sudoers.d/managerreplay-umount
+```
+
+(ajuste `/usr/bin/umount` se `which umount` apontar pra outro caminho na sua instalação, e o padrão `/media/*` se você monta os drives em outro lugar). Sem isso, o botão "Ejetar" vai falhar com erro 500 pedindo senha de forma não-interativa.
+
 Ainda dá pra fixar o destino via `--storage-root` na hora de subir o servidor (útil se você sempre grava no mesmo drive externo e quer pular a seleção manual toda vez):
 
 ```bash
