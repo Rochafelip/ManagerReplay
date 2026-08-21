@@ -4,6 +4,7 @@ from server.monitor_status import (
     parse_temp,
     parse_clock_mhz,
     parse_throttled_flags,
+    parse_external_storage_mounts,
 )
 
 
@@ -59,3 +60,36 @@ def test_parse_throttled_flags_undervoltage_now_and_ever():
     assert flags["undervoltage_ever"] is True
     assert flags["freq_capped_now"] is False
     assert flags["throttled_now"] is False
+
+
+def test_parse_external_storage_mounts_picks_out_sdx_devices():
+    mounts = (
+        "/dev/mmcblk0p2 / ext4 rw,noatime 0 0\n"
+        "/dev/mmcblk0p1 /boot vfat rw,relatime 0 2\n"
+        "/dev/sda1 /media/rocha/SSD1 ext4 rw,nosuid,nodev,relatime 0 0\n"
+        "tmpfs /run tmpfs rw,nosuid,size=98040k,mode=755 0 0\n"
+    )
+
+    devices = parse_external_storage_mounts(mounts)
+
+    assert devices == [{"device": "/dev/sda1", "mountpoint": "/media/rocha/SSD1", "fstype": "ext4"}]
+
+
+def test_parse_external_storage_mounts_returns_empty_when_only_sd_card(tmp_path):
+    mounts = (
+        "/dev/mmcblk0p2 / ext4 rw,noatime 0 0\n"
+        "/dev/mmcblk0p1 /boot vfat rw,relatime 0 2\n"
+    )
+
+    assert parse_external_storage_mounts(mounts) == []
+
+
+def test_parse_external_storage_mounts_supports_multiple_devices():
+    mounts = (
+        "/dev/sda1 /media/rocha/SSD1 ext4 rw 0 0\n"
+        "/dev/sdb1 /media/rocha/PENDRIVE vfat rw 0 0\n"
+    )
+
+    devices = parse_external_storage_mounts(mounts)
+
+    assert [d["device"] for d in devices] == ["/dev/sda1", "/dev/sdb1"]

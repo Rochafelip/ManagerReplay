@@ -72,3 +72,43 @@ def get_disk_usage(path: Path) -> dict:
         "disk_used_mb": usage.used // mb,
         "disk_total_mb": usage.total // mb,
     }
+
+
+# Raspberry Pi OS always boots off the SD card (/dev/mmcblk0...), and the Pi
+# has no built-in SATA — so any mounted /dev/sdX device is, in practice,
+# external USB storage (pendrive/SSD), no udev/lsblk needed to tell them apart.
+_EXTERNAL_DEVICE_PATTERN = re.compile(r"^/dev/sd[a-z]\d*$")
+
+
+def parse_external_storage_mounts(mounts_output: str) -> list[dict]:
+    devices = []
+    for line in mounts_output.splitlines():
+        parts = line.split()
+        if len(parts) < 3:
+            continue
+        device, mountpoint, fstype = parts[0], parts[1], parts[2]
+        if not _EXTERNAL_DEVICE_PATTERN.match(device):
+            continue
+        devices.append({"device": device, "mountpoint": mountpoint, "fstype": fstype})
+    return devices
+
+
+def detect_external_storage() -> list[dict]:
+    try:
+        mounts_output = Path("/proc/mounts").read_text()
+    except OSError:
+        return []
+
+    mb = 1024 * 1024
+    detected = []
+    for entry in parse_external_storage_mounts(mounts_output):
+        try:
+            usage = shutil.disk_usage(entry["mountpoint"])
+        except OSError:
+            continue
+        detected.append({
+            **entry,
+            "total_mb": usage.total // mb,
+            "free_mb": usage.free // mb,
+        })
+    return detected

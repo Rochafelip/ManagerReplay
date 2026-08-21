@@ -12,7 +12,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 
 from server.events import list_events, record_event
 from server.file_listing import list_directory
-from server.monitor_status import get_disk_usage, read_live_status
+from server.monitor_status import detect_external_storage, get_disk_usage, read_live_status
 from server.sessions import list_sessions, record_chunk, start_session, stop_session
 from server.storage import build_day_dir, find_session_parts, save_chunk, save_lance_clip
 
@@ -138,6 +138,7 @@ class ChunksUploadHandler(SimpleHTTPRequestHandler):
             return
 
         status.update(get_disk_usage(self.storage_root))
+        status["external_storage"] = detect_external_storage()
 
         body = json.dumps(status).encode("utf-8")
         self.send_response(200)

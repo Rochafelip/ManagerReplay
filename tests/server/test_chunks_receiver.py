@@ -359,7 +359,10 @@ def test_monitor_status_route_returns_live_reading_plus_disk_usage(tmp_path: Pat
         "undervoltage_ever": False,
     }
 
-    with patch("server.chunks_receiver.read_live_status", return_value=fake_status):
+    fake_external_storage = [{"device": "/dev/sda1", "mountpoint": "/media/rocha/SSD1", "fstype": "ext4", "total_mb": 60000, "free_mb": 40000}]
+
+    with patch("server.chunks_receiver.read_live_status", return_value=fake_status), \
+         patch("server.chunks_receiver.detect_external_storage", return_value=fake_external_storage):
         server, thread, port = _start_server(tmp_path, cert_path, key_path)
         try:
             conn = _https_connection(port)
@@ -376,6 +379,7 @@ def test_monitor_status_route_returns_live_reading_plus_disk_usage(tmp_path: Pat
     assert body["undervoltage_now"] is False
     assert body["disk_total_mb"] > 0
     assert body["disk_used_mb"] >= 0
+    assert body["external_storage"] == fake_external_storage
 
 
 def test_monitor_status_route_returns_503_when_measurement_fails(tmp_path: Path, self_signed_cert):

@@ -182,6 +182,34 @@
       return `${mb} MB`;
     }
 
+    const ICON_DRIVE = '<svg class="icon" viewBox="0 0 24 24"><line x1="22" x2="2" y1="12" y2="12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/><line x1="6" x2="6.01" y1="16" y2="16"/><line x1="10" x2="10.01" y1="16" y2="16"/></svg>';
+
+    function renderExternalStorageCard(devices) {
+      if (!devices || devices.length === 0) {
+        return `
+          <div class="card stat-card" style="margin-top: 10px;">
+            <div class="label">${ICON_DRIVE} Armazenamento externo</div>
+            <div class="capacity-note">Nenhum pendrive/SSD USB conectado.</div>
+          </div>
+        `;
+      }
+
+      const rows = devices.map((d) => `
+        <div class="capacity-row">
+          <span class="capacity-label">${d.device} · ${d.fstype}</span>
+          <span class="capacity-value">${formatStorage(d.free_mb)} livres de ${formatStorage(d.total_mb)}</span>
+        </div>
+      `).join("");
+
+      return `
+        <div class="card stat-card" style="margin-top: 10px;">
+          <div class="label">${ICON_DRIVE} Armazenamento externo conectado</div>
+          ${rows}
+          <div class="capacity-note">Detectado, mas a gravação ainda vai pro cartão SD por padrão. Pra gravar nesse dispositivo, aponte <code>--storage-root</code> pro caminho de montagem ao subir o servidor (ver README).</div>
+        </div>
+      `;
+    }
+
     function render(status) {
       const ramPct = ((status.ram_used_mb / status.ram_total_mb) * 100).toFixed(0);
       const diskPct = ((status.disk_used_mb / status.disk_total_mb) * 100).toFixed(0);
@@ -229,6 +257,8 @@
           </div>
           <div class="capacity-note">Estimativa a partir do espaço livre (${formatStorage(freeMb)}) e da taxa média observada — pode variar conforme a cena gravada.</div>
         </div>
+
+        ${renderExternalStorageCard(status.external_storage)}
 
         <div id="alerts">${alerts.map((a) => `<div class="alert ${a.tone}">${a.icon}<span>${a.text}</span></div>`).join("")}</div>
       `;

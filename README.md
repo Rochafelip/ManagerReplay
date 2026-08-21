@@ -103,6 +103,18 @@ Layout esperado na Pi, tudo sob `~/managerreplay/`:
 
 `--storage-root` e `--events-file` já usam `~/managerreplay/data/...` por padrão — só precisam ser passados se quiser outro local.
 
+### Gravando num pendrive/SSD USB externo
+
+A tela **Monitor** detecta automaticamente qualquer pendrive/SSD USB montado na Pi (qualquer dispositivo `/dev/sdX` — a Pi não tem SATA embutido, então isso nunca é confundido com o cartão SD, que é sempre `/dev/mmcblk0...`) e mostra o espaço livre nele. A detecção é só informativa — a gravação continua indo pro cartão SD até você apontar `--storage-root` explicitamente pro caminho de montagem do drive externo:
+
+```bash
+.venv/bin/python app.py --mode=chunks --cameras=1 \
+  --storage-root /media/rocha/SSD1/managerreplay-recordings \
+  --cert ~/managerreplay/certs/<ip>.pem --key ~/managerreplay/certs/<ip>-key.pem
+```
+
+Se estiver usando o systemd (ver seção abaixo), edite `ExecStart=` em `/etc/systemd/system/managerreplay-server.service` com o mesmo `--storage-root` e rode `sudo systemctl daemon-reload && sudo systemctl restart managerreplay-server`. Não existe troca automática de destino em tempo real (ex: se o pendrive for desconectado no meio de uma gravação) — é uma escolha de configuração feita antes de subir o servidor, mantendo o código simples.
+
 ## Hotspot Wi-Fi da Pi
 
 Criado uma vez via `nmcli` (rede aberta, sem senha — evita um bug conhecido de kernel panic do chip Wi-Fi do Pi 3B em modo AP com WPA2, ver `ContextoProjeto.md` Risco 4):
