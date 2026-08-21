@@ -36,6 +36,20 @@
     .stat-card .value.warn { color: var(--warning-hover); }
     .stat-card .value.bad { color: var(--danger); }
 
+    .capacity-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      padding: 6px 0;
+      font-size: 0.86rem;
+    }
+    .capacity-row + .capacity-row {
+      border-top: 1px solid var(--border);
+    }
+    .capacity-row .capacity-label { font-weight: 700; color: var(--text-secondary); }
+    .capacity-row .capacity-value { font-weight: 800; font-variant-numeric: tabular-nums; }
+    .capacity-note { margin-top: 8px; font-size: 0.74rem; color: var(--text-muted); line-height: 1.4; }
+
     #alerts { margin-top: 12px; }
     .alert {
       display: flex;
@@ -125,6 +139,25 @@
 
     const ICON_ALERT = '<svg class="icon" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>';
     const ICON_INFO = '<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>';
+    const ICON_CLOCK = '<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>';
+
+    // MB/min medidos/estimados por qualidade — não são valores teóricos de
+    // configuração de bitrate, vêm de um teste real de gravação (16.77 MB em
+    // 70s ≈ 14.4 MB/min em HD·30fps, ver README/histórico do projeto). FHD é
+    // estimado pela proporção de pixels em relação ao HD (2.25x), não medido
+    // diretamente — pode variar bastante conforme a cena.
+    const RECORDING_MB_PER_MINUTE = {
+      hd30: 14.4,
+      fhd30: 14.4 * 2.25,
+    };
+
+    function formatDurationEstimate(totalMinutes) {
+      if (!isFinite(totalMinutes) || totalMinutes <= 0) return "0 min";
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = Math.round(totalMinutes % 60);
+      if (hours === 0) return `${minutes} min`;
+      return `${hours}h ${String(minutes).padStart(2, "0")}min`;
+    }
 
     function cpuClass(pct) {
       if (pct >= 90) return "bad";
@@ -152,6 +185,9 @@
     function render(status) {
       const ramPct = ((status.ram_used_mb / status.ram_total_mb) * 100).toFixed(0);
       const diskPct = ((status.disk_used_mb / status.disk_total_mb) * 100).toFixed(0);
+      const freeMb = Math.max(0, status.disk_total_mb - status.disk_used_mb);
+      const hdMinutesLeft = freeMb / RECORDING_MB_PER_MINUTE.hd30;
+      const fhdMinutesLeft = freeMb / RECORDING_MB_PER_MINUTE.fhd30;
       const alerts = [];
       if (status.undervoltage_now) alerts.push({ icon: ICON_ALERT, tone: "", text: "Subvoltagem ATIVA AGORA — fonte fraca, troque o carregador." });
       if (status.freq_capped_now || status.throttled_now) alerts.push({ icon: ICON_ALERT, tone: "", text: "CPU sendo limitada agora por energia/temperatura." });
@@ -180,6 +216,20 @@
             <div class="value ${diskClass(diskPct)}">${formatStorage(status.disk_used_mb)}<br /><span class="value-detail">de ${formatStorage(status.disk_total_mb)} (${diskPct}%)</span></div>
           </div>
         </div>
+
+        <div class="card stat-card" style="margin-top: 10px;">
+          <div class="label">${ICON_CLOCK} Tempo de gravação restante</div>
+          <div class="capacity-row">
+            <span class="capacity-label">HD · 30fps</span>
+            <span class="capacity-value">${formatDurationEstimate(hdMinutesLeft)}</span>
+          </div>
+          <div class="capacity-row">
+            <span class="capacity-label">FHD · 30fps</span>
+            <span class="capacity-value">${formatDurationEstimate(fhdMinutesLeft)}</span>
+          </div>
+          <div class="capacity-note">Estimativa a partir do espaço livre (${formatStorage(freeMb)}) e da taxa média observada — pode variar conforme a cena gravada.</div>
+        </div>
+
         <div id="alerts">${alerts.map((a) => `<div class="alert ${a.tone}">${a.icon}<span>${a.text}</span></div>`).join("")}</div>
       `;
       lastUpdatedEl.textContent = `Última leitura: ${status.timestamp}`;
