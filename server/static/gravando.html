@@ -6,56 +6,66 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="icons/icon-32.png" sizes="32x32" type="image/png" />
   <link rel="apple-touch-icon" href="icons/icon-180.png" />
-  <meta name="theme-color" content="#111827" />
+  <meta name="theme-color" content="#0b0f14" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>ManagerReplay — Quem está gravando</title>
   <style>
     * { box-sizing: border-box; }
+    html { min-height: 100%; background: #0b0f14; color-scheme: dark; }
     body {
-      font-family: -apple-system, system-ui, sans-serif;
-      background: #111;
-      color: #eee;
+      min-height: 100dvh;
       margin: 0;
-      padding: 1.5em 1em;
-      min-height: 100vh;
+      padding: max(22px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) 18px max(18px, env(safe-area-inset-left));
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #0b0f14;
+      color: #f3f4f6;
+      -webkit-font-smoothing: antialiased;
+      -webkit-tap-highlight-color: transparent;
     }
-    h1 { font-size: 1.2em; margin: 0 0 0.3em; }
-    .subtitle { color: #999; font-size: 0.85em; margin: 0 0 1.2em; }
+    h1 { font-size: 1.3rem; font-weight: 800; margin: 0 0 4px; letter-spacing: -0.01em; }
+    .subtitle { color: #6b7280; font-size: 0.85rem; margin: 0 0 22px; }
     .card {
-      background: #1e1e1e;
-      border-radius: 12px;
-      padding: 1em;
-      margin-bottom: 0.75em;
+      background: #111720;
+      border: 1px solid #202833;
+      border-radius: 15px;
+      padding: 15px 16px;
+      margin-bottom: 12px;
     }
     .card-top {
       display: flex;
       align-items: baseline;
       justify-content: space-between;
     }
-    .card-name { font-size: 1.1em; font-weight: 700; }
-    .card-camera { color: #999; font-size: 0.85em; }
+    .card-name { font-size: 1.08rem; font-weight: 700; }
+    .card-camera { color: #6b7280; font-size: 0.8rem; }
     .card-elapsed {
-      font-size: 1.4em;
-      font-weight: 700;
-      color: #16a34a;
-      margin-top: 0.3em;
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #4ade80;
+      margin-top: 4px;
     }
     .card-meta {
       display: flex;
       justify-content: space-between;
-      margin-top: 0.6em;
-      font-size: 0.85em;
-      color: #999;
+      align-items: center;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #202833;
+      font-size: 0.78rem;
+      color: #6b7280;
     }
-    .signal { font-weight: 600; }
+    .signal { font-weight: 700; }
     .signal.ok { color: #4ade80; }
     .signal.bad { color: #f87171; }
-    #empty { color: #999; text-align: center; padding: 2em 0; }
+    #empty { color: #6b7280; text-align: center; padding: 2em 0; }
     a.back-link {
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
       margin-top: 1.5em;
       color: #93c5fd;
+      font-size: 0.87rem;
+      font-weight: 600;
       text-decoration: none;
     }
   </style>

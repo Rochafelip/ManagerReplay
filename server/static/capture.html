@@ -1,249 +1,965 @@
 <!doctype html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  />
+
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="icons/icon-32.png" sizes="32x32" type="image/png" />
   <link rel="apple-touch-icon" href="icons/icon-180.png" />
-  <meta name="theme-color" content="#111827" />
+
+  <meta name="theme-color" content="#0b0f14" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta
+    name="apple-mobile-web-app-status-bar-style"
+    content="black-translucent"
+  />
+
   <title>ManagerReplay</title>
+
   <style>
-    * { box-sizing: border-box; }
-    body {
-      font-family: -apple-system, system-ui, sans-serif;
-      background: #111;
-      color: #eee;
-      margin: 0;
-      padding: 1em;
-      min-height: 100vh;
+    /* =========================================================
+       RESET
+       ========================================================= */
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
     }
-    #video-wrap {
-      position: relative;
-      border-radius: 12px;
-      overflow: hidden;
-      background: #000;
+
+    html {
+      min-height: 100%;
+      background: #0b0f14;
+      color-scheme: dark;
+    }
+
+    body {
+      min-width: 100%;
+      min-height: 100dvh;
+
+      margin: 0;
+
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Helvetica,
+        Arial,
+        sans-serif;
+
+      background: #0b0f14;
+      color: #f3f4f6;
+
+      -webkit-font-smoothing: antialiased;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    button,
+    select {
+      font: inherit;
+      touch-action: manipulation;
+    }
+
+
+    /* =========================================================
+       APP
+       ========================================================= */
+
+    .app {
+      width: 100%;
+      min-height: 100dvh;
+
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
+
+      padding:
+        env(safe-area-inset-top)
+        env(safe-area-inset-right)
+        env(safe-area-inset-bottom)
+        env(safe-area-inset-left);
     }
-    video {
+
+
+    /* =========================================================
+       VIDEO
+       ========================================================= */
+
+    #video-wrap {
+      position: relative;
+
       width: 100%;
-      display: block;
+
+      /*
+       * Um pouco mais baixo que 9:16.
+       * Evita que o vídeo consuma a tela inteira no celular.
+       */
+      aspect-ratio: 4 / 5;
+
+      background: #000;
+
+      overflow: hidden;
+
+      border-radius: 0;
+
+      isolation: isolate;
+    }
+
+    #preview {
       position: absolute;
       inset: 0;
-      object-fit: cover;
-      height: 100%;
-    }
-    #video-wrap { aspect-ratio: 9 / 12; }
 
-    /* Landscape (phone rotated sideways): video beside controls instead of stacked */
-    @media (orientation: landscape) and (max-height: 600px) {
-      body {
-        display: flex;
-        align-items: flex-start;
-        gap: 1em;
-        padding: 0.75em;
-      }
-      #video-wrap {
-        flex: 1 1 60%;
-        aspect-ratio: 16 / 9;
-        max-height: calc(100vh - 1.5em);
-      }
-      .side-panel {
-        flex: 1 1 35%;
-        max-height: calc(100vh - 1.5em);
-        overflow-y: auto;
-      }
-      #camera-settings { margin-top: 0; flex-direction: column; }
+      width: 100%;
+      height: 100%;
+
+      display: block;
+
+      background: #000;
+
+      object-fit: cover;
     }
-    .overlay-row {
-      position: relative;
-      z-index: 1;
-      padding: 12px;
+
+
+    /* =========================================================
+       VIDEO TOP
+       ========================================================= */
+
+    .video-top {
+      position: absolute;
+
+      top: 0;
+      left: 0;
+      right: 0;
+
+      z-index: 2;
+
+      padding:
+        max(12px, env(safe-area-inset-top))
+        14px
+        30px
+        14px;
+
+      background:
+        linear-gradient(
+          to bottom,
+          rgba(0, 0, 0, 0.65),
+          rgba(0, 0, 0, 0)
+        );
     }
-    #rec-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: rgba(220, 38, 38, 0.9);
-      color: #fff;
-      font-size: 0.8em;
-      font-weight: 600;
-      padding: 6px 10px;
-      border-radius: 8px;
+
+
+    /* =========================================================
+       VIDEO BOTTOM
+       ========================================================= */
+
+    .video-bottom {
+      position: absolute;
+
+      left: 0;
+      right: 0;
+      bottom: 0;
+
+      z-index: 2;
+
+      padding:
+        55px
+        14px
+        max(14px, env(safe-area-inset-bottom))
+        14px;
+
+      background:
+        linear-gradient(
+          to top,
+          rgba(0, 0, 0, 0.88),
+          rgba(0, 0, 0, 0)
+        );
     }
-    #rec-badge[hidden] { display: none; }
+
+
+    /* =========================================================
+       BADGES
+       ========================================================= */
+
+    #rec-badge,
     #operator-badge {
       display: inline-flex;
+
       align-items: center;
-      gap: 6px;
-      background: rgba(22, 163, 74, 0.9);
-      color: #fff;
-      font-size: 0.8em;
-      font-weight: 600;
+      gap: 7px;
+
+      width: fit-content;
+
       padding: 6px 10px;
-      border-radius: 8px;
-      margin-top: 6px;
+
+      border-radius: 999px;
+
+      color: #fff;
+
+      font-size: 0.76rem;
+      font-weight: 700;
+
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
     }
+
+    #rec-badge {
+      background: rgba(220, 38, 38, 0.94);
+    }
+
+    #rec-badge[hidden],
+    #operator-badge[hidden] {
+      display: none;
+    }
+
+    #operator-badge {
+      margin-top: 7px;
+
+      background: rgba(22, 163, 74, 0.94);
+    }
+
     #rec-badge .dot {
       width: 8px;
       height: 8px;
+
+      flex: 0 0 8px;
+
       border-radius: 50%;
+
       background: #fff;
+
       animation: pulse 1.2s infinite;
     }
+
     @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.3; }
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.3;
+      }
     }
-    .bottom-controls {
+
+
+    /* =========================================================
+       GRAVAR
+       ========================================================= */
+
+    #record-toggle {
       display: flex;
+
       align-items: center;
       justify-content: center;
-      gap: 10px;
-      background: linear-gradient(to top, rgba(0,0,0,0.75), transparent);
-      padding-top: 30px;
-    }
-    #camera-settings {
-      display: flex;
-      gap: 10px;
-      margin-top: 0.75em;
-    }
-    .settings-field { flex: 1; }
-    .settings-field label {
-      display: block;
-      font-size: 0.75em;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: #999;
-      margin-bottom: 0.4em;
-    }
-    .settings-field select {
-      appearance: none;
-      display: block;
+
       width: 100%;
-      background: #1e1e1e;
-      border: 1px solid #333;
-      color: #eee;
-      border-radius: 10px;
-      padding: 10px 12px;
-      font-size: 0.9em;
-    }
-    .settings-field select:focus { outline: none; border-color: #16a34a; }
-    .settings-field select:disabled { opacity: 0.5; }
-    #record-toggle {
-      flex-shrink: 0;
-      padding: 14px 24px;
-      font-size: 1.15em;
-      font-weight: 700;
-      border: none;
-      border-radius: 50px;
+
+      min-height: 54px;
+
+      padding: 13px 18px;
+
+      border: 0;
+      border-radius: 15px;
+
       background: #16a34a;
       color: #fff;
+
+      font-size: 0.98rem;
+      font-weight: 800;
+
+      box-shadow:
+        0 6px 18px rgba(0, 0, 0, 0.35);
+
+      cursor: pointer;
+
+      transition:
+        transform 0.12s ease,
+        background 0.15s ease;
     }
-    #record-toggle:active { background: #15803d; }
+
+    #record-toggle:active {
+      transform: scale(0.98);
+      background: #15803d;
+    }
+
     #record-toggle.recording {
       background: #dc2626;
-      color: #fff;
     }
-    #record-toggle.recording:active { background: #b91c1c; }
+
+    #record-toggle.recording:active {
+      background: #b91c1c;
+    }
+
+
+    /* =========================================================
+       PAINEL
+       ========================================================= */
+
+    .side-panel {
+      width: 100%;
+
+      padding: 15px 16px 18px;
+    }
+
+
+    /* =========================================================
+       CONFIGURAÇÕES
+       ========================================================= */
+
+    #camera-settings {
+      display: grid;
+
+      grid-template-columns: 1fr 1fr;
+
+      gap: 12px;
+
+      margin: 0;
+    }
+
+    .settings-field {
+      min-width: 0;
+    }
+
+    .settings-field label {
+      display: block;
+
+      margin-bottom: 7px;
+
+      color: #93c5fd;
+
+      font-size: 0.72rem;
+      font-weight: 800;
+
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .settings-field select {
+      appearance: none;
+
+      width: 100%;
+      min-height: 50px;
+
+      padding: 0 34px 0 13px;
+
+      border: 1px solid #2d3748;
+      border-radius: 11px;
+
+      background-color: #151b23;
+      color: #f3f4f6;
+
+      font-size: 0.87rem;
+      font-weight: 600;
+
+      cursor: pointer;
+
+      background-image:
+        linear-gradient(
+          45deg,
+          transparent 50%,
+          #9ca3af 50%
+        ),
+        linear-gradient(
+          135deg,
+          #9ca3af 50%,
+          transparent 50%
+        );
+
+      background-position:
+        calc(100% - 15px) 21px,
+        calc(100% - 10px) 21px;
+
+      background-size:
+        5px 5px,
+        5px 5px;
+
+      background-repeat: no-repeat;
+    }
+
+    .settings-field select:focus {
+      outline: none;
+
+      border-color: #16a34a;
+
+      box-shadow:
+        0 0 0 3px rgba(22, 163, 74, 0.15);
+    }
+
+    .settings-field select:disabled {
+      opacity: 0.5;
+    }
+
+
+    /* =========================================================
+       LANCE
+       ========================================================= */
+
     #lance-button {
       display: block;
+
       width: 100%;
-      margin-top: 0.75em;
-      padding: 14px 24px;
-      font-size: 1.15em;
-      font-weight: 700;
-      border: none;
-      border-radius: 50px;
+
+      min-height: 58px;
+
+      margin-top: 14px;
+
+      padding: 13px 20px;
+
+      border: 0;
+      border-radius: 15px;
+
       background: #f59e0b;
-      color: #111;
-    }
-    #lance-button[hidden] { display: none; }
-    #lance-button:active { background: #d97706; }
-    #lance-button:disabled {
-      background: #444;
-      color: #999;
-    }
-    @keyframes flash-pulse {
-      0% { box-shadow: inset 0 0 0 6px rgba(245, 158, 11, 0.9); }
-      100% { box-shadow: inset 0 0 0 6px rgba(245, 158, 11, 0); }
-    }
-    #video-wrap.flash { animation: flash-pulse 0.5s ease-out; }
-    #lance-toast, #save-toast {
-      text-align: center;
-      margin-top: 0.6em;
-      font-weight: 600;
-      min-height: 1.2em;
-      opacity: 0;
-      transition: opacity 0.3s;
-    }
-    #lance-toast { color: #f59e0b; }
-    #save-toast { color: #4ade80; }
-    #lance-toast.visible, #save-toast.visible { opacity: 1; }
-    details {
-      margin-top: 0.75em;
-      background: #1e1e1e;
-      border-radius: 10px;
-      padding: 0.6em 1em;
-    }
-    summary {
+      color: #111827;
+
+      font-size: 1.02rem;
+      font-weight: 900;
+
+      box-shadow:
+        0 6px 18px rgba(245, 158, 11, 0.18);
+
       cursor: pointer;
-      color: #93c5fd;
-      font-size: 0.9em;
+
+      transition:
+        transform 0.12s ease,
+        background 0.15s ease;
     }
-    #status { color: #4ade80; font-weight: 600; margin-top: 0.5em; }
-    #stats, #save-path { font-size: 0.85em; color: #999; margin-top: 0.3em; word-break: break-all; }
-    a.back-link {
-      display: inline-block;
-      margin-top: 0.75em;
+
+    #lance-button[hidden] {
+      display: none;
+    }
+
+    #lance-button:active {
+      transform: scale(0.98);
+      background: #d97706;
+    }
+
+    #lance-button:disabled {
+      background: #303640;
+      color: #6b7280;
+
+      box-shadow: none;
+
+      cursor: not-allowed;
+    }
+
+
+    /* =========================================================
+       TOASTS
+       ========================================================= */
+
+    #lance-toast,
+    #save-toast {
+      min-height: 22px;
+
+      margin-top: 7px;
+
+      text-align: center;
+
+      font-size: 0.84rem;
+      font-weight: 700;
+
+      opacity: 0;
+
+      transition: opacity 0.25s ease;
+    }
+
+    #lance-toast {
+      color: #fbbf24;
+    }
+
+    #save-toast {
+      color: #4ade80;
+    }
+
+    #lance-toast.visible,
+    #save-toast.visible {
+      opacity: 1;
+    }
+
+
+    /* =========================================================
+       DETALHES
+       ========================================================= */
+
+    details {
+      margin-top: 9px;
+
+      overflow: hidden;
+
+      border: 1px solid #202833;
+      border-radius: 11px;
+
+      background: #111720;
+    }
+
+    summary {
+      display: flex;
+      align-items: center;
+
+      min-height: 48px;
+
+      padding: 0 13px;
+
       color: #93c5fd;
+
+      font-size: 0.86rem;
+      font-weight: 700;
+
+      cursor: pointer;
+
+      list-style: none;
+    }
+
+    summary::-webkit-details-marker {
+      display: none;
+    }
+
+    summary::after {
+      content: "⌄";
+
+      margin-left: auto;
+
+      font-size: 1rem;
+
+      transition: transform 0.2s ease;
+    }
+
+    details[open] summary::after {
+      transform: rotate(180deg);
+    }
+
+    #status,
+    #stats,
+    #save-path {
+      padding-left: 13px;
+      padding-right: 13px;
+    }
+
+    #status {
+      padding-top: 10px;
+
+      color: #4ade80;
+
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+
+    #stats,
+    #save-path {
+      margin-top: 5px;
+
+      color: #6b7280;
+
+      font-size: 0.76rem;
+
+      word-break: break-word;
+    }
+
+    #save-path {
+      padding-bottom: 13px;
+    }
+
+
+    /* =========================================================
+       VOLTAR
+       ========================================================= */
+
+    a.back-link {
+      display: flex;
+      align-items: center;
+
+      min-height: 42px;
+
+      margin-top: 4px;
+
+      color: #93c5fd;
+
+      font-size: 0.87rem;
+      font-weight: 600;
+
       text-decoration: none;
+    }
+
+    a.back-link:active {
+      opacity: 0.65;
+    }
+
+
+    /* =========================================================
+       FLASH
+       ========================================================= */
+
+    @keyframes flash-pulse {
+      0% {
+        box-shadow:
+          inset 0 0 0 6px
+          rgba(245, 158, 11, 0.95);
+      }
+
+      100% {
+        box-shadow:
+          inset 0 0 0 6px
+          rgba(245, 158, 11, 0);
+      }
+    }
+
+    #video-wrap.flash {
+      animation: flash-pulse 0.5s ease-out;
+    }
+
+
+    /* =========================================================
+       CELULARES PEQUENOS
+       ========================================================= */
+
+    @media (max-width: 380px) {
+      #video-wrap {
+        aspect-ratio: 4 / 5;
+      }
+
+      .side-panel {
+        padding-left: 12px;
+        padding-right: 12px;
+      }
+
+      #camera-settings {
+        gap: 8px;
+      }
+
+      .settings-field select {
+        font-size: 0.79rem;
+        padding-left: 10px;
+      }
+
+      #record-toggle {
+        min-height: 50px;
+      }
+    }
+
+
+    /* =========================================================
+       LANDSCAPE NO CELULAR
+       ========================================================= */
+
+    @media (
+      orientation: landscape
+    ) and (
+      max-height: 600px
+    ) {
+
+      .app {
+        display: grid;
+
+        grid-template-columns:
+          minmax(0, 1fr)
+          minmax(240px, 34%);
+
+        gap: 12px;
+
+        min-height: 100dvh;
+
+        padding:
+          max(8px, env(safe-area-inset-top))
+          max(8px, env(safe-area-inset-right))
+          max(8px, env(safe-area-inset-bottom))
+          max(8px, env(safe-area-inset-left));
+      }
+
+      #video-wrap {
+        height: calc(
+          100dvh
+          - env(safe-area-inset-top)
+          - env(safe-area-inset-bottom)
+          - 16px
+        );
+
+        aspect-ratio: auto;
+
+        border-radius: 14px;
+      }
+
+      .side-panel {
+        height: 100%;
+
+        padding: 0;
+
+        overflow-y: auto;
+        overscroll-behavior: contain;
+      }
+
+      #camera-settings {
+        grid-template-columns: 1fr;
+      }
+
+      #record-toggle {
+        min-height: 50px;
+      }
+    }
+
+
+    /* =========================================================
+       TABLET
+       ========================================================= */
+
+    @media (min-width: 600px) {
+
+      body {
+        background: #080b10;
+      }
+
+      .app {
+        max-width: 900px;
+
+        margin: 0 auto;
+
+        padding:
+          20px
+          max(20px, env(safe-area-inset-right))
+          20px
+          max(20px, env(safe-area-inset-left));
+      }
+
+      #video-wrap {
+        aspect-ratio: 16 / 10;
+
+        border-radius: 18px;
+      }
+
+      .side-panel {
+        padding:
+          18px
+          0
+          0;
+      }
+
+      #camera-settings {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+
+    /* =========================================================
+       DESKTOP
+       ========================================================= */
+
+    @media (min-width: 900px) {
+
+      .app {
+        max-width: 1100px;
+
+        display: grid;
+
+        grid-template-columns:
+          minmax(0, 1fr)
+          320px;
+
+        align-items: start;
+
+        gap: 20px;
+
+        padding: 24px;
+      }
+
+      #video-wrap {
+        aspect-ratio: 16 / 10;
+
+        border-radius: 18px;
+      }
+
+      .side-panel {
+        padding: 0;
+      }
+
+      #camera-settings {
+        grid-template-columns: 1fr;
+      }
+    }
+
+
+    /* =========================================================
+       ACESSIBILIDADE
+       ========================================================= */
+
+    @media (prefers-reduced-motion: reduce) {
+
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    button:focus-visible,
+    select:focus-visible,
+    a:focus-visible,
+    summary:focus-visible {
+      outline: 2px solid #60a5fa;
+      outline-offset: 3px;
     }
   </style>
 </head>
+
 <body>
-  <div id="video-wrap">
-    <video id="preview" autoplay playsinline muted></video>
-    <div class="overlay-row">
-      <span id="rec-badge" hidden><span class="dot"></span> gravando · <span id="elapsed">00:00</span></span>
-      <br />
-      <span id="operator-badge" hidden>🎥 <span id="operator-name"></span></span>
-    </div>
-    <div class="overlay-row bottom-controls">
-      <button id="record-toggle" type="button">● Iniciar gravação</button>
-    </div>
-  </div>
-  <div class="side-panel">
-    <div id="camera-settings">
-      <div class="settings-field">
-        <label for="camera-device">📷 Câmera</label>
-        <select id="camera-device"></select>
+
+  <main class="app">
+
+    <!-- =====================================================
+         CÂMERA
+         ===================================================== -->
+
+    <section id="video-wrap">
+
+      <video
+        id="preview"
+        autoplay
+        playsinline
+        muted
+      ></video>
+
+      <!-- Informações sobre gravação -->
+      <div class="video-top">
+
+        <span id="rec-badge" hidden>
+          <span class="dot"></span>
+
+          gravando ·
+
+          <span id="elapsed">
+            00:00
+          </span>
+        </span>
+
+        <span id="operator-badge" hidden>
+          🎥
+
+          <span id="operator-name"></span>
+        </span>
+
       </div>
-      <div class="settings-field">
-        <label for="quality-select">🎞️ Qualidade</label>
-        <select id="quality-select">
-          <option value="hd30">HD · 30fps</option>
-          <option value="hd60">HD · 60fps</option>
-          <option value="fhd30">FHD · 30fps</option>
-          <option value="fhd60">FHD · 60fps</option>
-        </select>
+
+
+      <!-- Botão principal -->
+      <div class="video-bottom">
+
+        <button
+          id="record-toggle"
+          type="button"
+        >
+          ● Iniciar gravação
+        </button>
+
       </div>
-    </div>
-    <button id="lance-button" type="button" hidden>⚡ Lance</button>
-    <div id="lance-toast"></div>
-    <div id="save-toast"></div>
-    <details>
-      <summary>⚙ detalhes técnicos</summary>
-      <div id="status">iniciando...</div>
-      <div id="stats"></div>
-      <div id="save-path"></div>
-    </details>
-    <a class="back-link" href="cameras.html">&larr; voltar ao menu</a>
-  </div>
+
+    </section>
+
+
+    <!-- =====================================================
+         PAINEL DE CONTROLE
+         ===================================================== -->
+
+    <section class="side-panel">
+
+      <div id="camera-settings">
+
+        <!-- Câmera -->
+        <div class="settings-field">
+
+          <label for="camera-device">
+            📷 Câmera
+          </label>
+
+          <select id="camera-device"></select>
+
+        </div>
+
+
+        <!-- Qualidade -->
+        <div class="settings-field">
+
+          <label for="quality-select">
+            🎞️ Qualidade
+          </label>
+
+          <select id="quality-select">
+
+            <option value="hd30">
+              HD · 30fps
+            </option>
+
+            <option value="hd60">
+              HD · 60fps
+            </option>
+
+            <option value="fhd30">
+              FHD · 30fps
+            </option>
+
+            <option value="fhd60">
+              FHD · 60fps
+            </option>
+
+          </select>
+
+        </div>
+
+      </div>
+
+
+      <!-- Lance -->
+      <button
+        id="lance-button"
+        type="button"
+        hidden
+      >
+        ⚡ Lance
+      </button>
+
+
+      <!-- Mensagens -->
+      <div id="lance-toast"></div>
+
+      <div id="save-toast"></div>
+
+
+      <!-- Detalhes -->
+      <details>
+
+        <summary>
+          ⚙ Detalhes técnicos
+        </summary>
+
+        <div id="status">
+          iniciando...
+        </div>
+
+        <div id="stats"></div>
+
+        <div id="save-path"></div>
+
+      </details>
+
+
+      <!-- Retorno -->
+      <a
+        class="back-link"
+        href="cameras.html"
+      >
+        ← Voltar ao menu
+      </a>
+
+    </section>
+
+  </main>
+
+
   <script src="client.js?v=15"></script>
+
 </body>
 </html>
