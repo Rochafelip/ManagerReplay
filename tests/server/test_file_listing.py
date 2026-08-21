@@ -71,3 +71,18 @@ def test_list_directory_leaves_unmatched_files_and_dirs_untouched(tmp_path: Path
 
     names = {e["name"] for e in entries}
     assert names == {"camera-1", "jogo_completo.webm"}
+
+
+def test_list_directory_does_not_group_lance_clip_files(tmp_path: Path):
+    lances_dir = tmp_path / "lances"
+    lances_dir.mkdir()
+    (lances_dir / "lance_camera2_LanceEpico001.webm").write_bytes(b"clip")
+
+    entries = list_directory(tmp_path, "lances")
+
+    assert entries == [{
+        "name": "lance_camera2_LanceEpico001.webm",
+        "is_dir": False,
+        "size": 4,
+        "mtime": entries[0]["mtime"],
+    }]

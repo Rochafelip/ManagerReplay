@@ -33,3 +33,21 @@ def find_session_parts(day_dir: Path, camera_id: str, session_id: str) -> list[P
             numbered.append((int(match.group(1)), item))
     numbered.sort(key=lambda pair: pair[0])
     return [item for _, item in numbered]
+
+
+def sanitize_lance_name(nome: str) -> str:
+    """Strips a lance's display name down to filename-safe characters.
+
+    Mirrored in lances.html's JS so a clip's filename can be derived
+    identically on both sides from the event's "nome" field alone —
+    there's no separate "clip path" stored in events.jsonl.
+    """
+    return re.sub(r"[^A-Za-z0-9]", "", nome)
+
+
+def save_lance_clip(day_dir: Path, camera_id: str, nome: str, data: bytes) -> Path:
+    lances_dir = day_dir / "lances"
+    lances_dir.mkdir(parents=True, exist_ok=True)
+    clip_path = lances_dir / f"lance_camera{camera_id}_{sanitize_lance_name(nome)}.webm"
+    clip_path.write_bytes(data)
+    return clip_path

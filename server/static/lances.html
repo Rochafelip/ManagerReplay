@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icons/icon-32.png" sizes="32x32" type="image/png" />
+  <link rel="apple-touch-icon" href="icons/icon-180.png" />
+  <meta name="theme-color" content="#f1f5f9" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>ManagerReplay — Lances</title>
+  <link rel="stylesheet" href="theme.css" />
+  <style>
+    .lance-card { padding: 14px 16px; margin-bottom: 9px; }
+    .lance-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .lance-name { font-size: 1rem; font-weight: 800; }
+    .lance-meta {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--text-secondary);
+      font-size: 0.78rem;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+    .lance-meta .icon { color: var(--accent); }
+    .lance-action {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: #fff;
+      padding: 9px 14px;
+      border-radius: var(--radius-sm);
+      font-weight: 700;
+      font-size: 0.8rem;
+      flex-shrink: 0;
+      text-decoration: none;
+    }
+    #empty { color: var(--text-muted); text-align: center; padding: 2.5em 0; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <header class="topbar">
+      <a class="icon-button" href="index.html" aria-label="Voltar">
+        <svg class="icon" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+      </a>
+      <div class="brand">
+        <span class="brand-mark">
+          <svg class="icon" viewBox="0 0 24 24"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
+        </span>
+        ManagerReplay
+      </div>
+    </header>
+
+    <h1 class="page-title">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg>
+      Lances
+    </h1>
+    <p class="subtitle">Toque em "Lance" durante a gravação pra ver o clipe aqui.</p>
+
+    <div id="content"></div>
+
+  </div>
+
+  <script>
+    const contentEl = document.getElementById("content");
+
+    const ICON_CAMERA = '<svg class="icon" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>';
+    const ICON_CLOCK = '<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>';
+    const ICON_DOWNLOAD = '<svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>';
+
+    // Câmera 1 = traseira (environment), câmera 2 = frontal (user) — fixado em cameras.html.
+    const CAMERA_LABELS = { 1: "Câmera traseira", 2: "Câmera frontal" };
+
+    function cameraLabel(cameraId) {
+      return CAMERA_LABELS[cameraId] || `Câmera ${cameraId}`;
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, (ch) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+      })[ch]);
+    }
+
+    function formatDate(isoTimestamp) {
+      return new Date(isoTimestamp).toLocaleString("pt-BR", {
+        day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit",
+      });
+    }
+
+    // Mantém em espelho o server.storage.sanitize_lance_name — o clipe não
+    // tem um caminho salvo à parte, o nome do arquivo é sempre recalculado
+    // a partir do "nome" do evento.
+    function sanitizeLanceName(nome) {
+      return nome.replace(/[^A-Za-z0-9]/g, "");
+    }
+
+    function clipUrl(event) {
+      const day = event.timestamp.slice(0, 10);
+      return `/files/${day}/lances/lance_camera${event.camera}_${sanitizeLanceName(event.nome)}.webm`;
+    }
+
+    function renderCard(event) {
+      const url = clipUrl(event);
+      return `
+        <div class="card lance-card">
+          <div class="lance-top">
+            <div>
+              <div class="lance-name">${escapeHtml(event.nome)}</div>
+              <div class="lance-meta">${ICON_CAMERA} ${cameraLabel(event.camera)} · ${ICON_CLOCK} ${formatDate(event.timestamp)}</div>
+            </div>
+            <a class="lance-action" href="${url}" download>${ICON_DOWNLOAD} Baixar</a>
+          </div>
+        </div>
+      `;
+    }
+
+    function render(events) {
+      if (events.length === 0) {
+        contentEl.innerHTML = '<div id="empty">Nenhum lance registrado ainda.</div>';
+        return;
+      }
+      contentEl.innerHTML = events.slice().reverse().map(renderCard).join("");
+    }
+
+    async function load() {
+      try {
+        const response = await fetch("/events-list");
+        if (!response.ok) throw new Error("não foi possível ler os lances");
+        const events = await response.json();
+        render(events);
+      } catch (err) {
+        contentEl.innerHTML = `<div id="empty">erro: ${escapeHtml(err.message)}</div>`;
+      }
+    }
+
+    load();
+    setInterval(load, 5000);
+  </script>
+</body>
+</html>

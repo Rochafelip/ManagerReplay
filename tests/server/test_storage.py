@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from server.storage import build_day_dir, find_session_parts, save_chunk
+from server.storage import build_day_dir, find_session_parts, sanitize_lance_name, save_chunk, save_lance_clip
 
 
 def test_build_day_dir_creates_path_from_session_id_date(tmp_path: Path):
@@ -55,3 +55,25 @@ def test_find_session_parts_returns_paths_sorted_by_part_number(tmp_path: Path):
 
 def test_find_session_parts_returns_empty_list_when_none_match(tmp_path: Path):
     assert find_session_parts(tmp_path, camera_id="1", session_id="nope") == []
+
+
+def test_sanitize_lance_name_strips_spaces_and_punctuation():
+    assert sanitize_lance_name("LanceEpico 001") == "LanceEpico001"
+    assert sanitize_lance_name("Gol! do Time (2º)") == "GoldoTime2"
+
+
+def test_save_lance_clip_writes_file_under_lances_subfolder(tmp_path: Path):
+    path = save_lance_clip(tmp_path, camera_id="2", nome="LanceEpico 001", data=b"clip-bytes")
+
+    assert path == tmp_path / "lances" / "lance_camera2_LanceEpico001.webm"
+    assert path.read_bytes() == b"clip-bytes"
+
+
+def test_save_lance_clip_creates_lances_subfolder_if_missing(tmp_path: Path):
+    day_dir = tmp_path / "2026-08-21"
+    day_dir.mkdir()
+
+    path = save_lance_clip(day_dir, camera_id="1", nome="LanceEpico 002", data=b"x")
+
+    assert path.parent.is_dir()
+    assert path.parent.name == "lances"

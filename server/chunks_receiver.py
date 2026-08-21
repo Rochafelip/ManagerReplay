@@ -4,16 +4,17 @@ import shutil
 import ssl
 import threading
 import time
+from datetime import datetime, timezone
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
-from server.events import record_event
+from server.events import list_events, record_event
 from server.file_listing import list_directory
 from server.monitor_status import get_disk_usage, read_live_status
 from server.sessions import list_sessions, record_chunk, start_session, stop_session
-from server.storage import build_day_dir, find_session_parts, save_chunk
+from server.storage import build_day_dir, find_session_parts, save_chunk, save_lance_clip
 
 # Matches the merged/virtual recording name produced by file_listing
 # (e.g. "camera2_2026-08-20T18-32-10.webm"), as opposed to a literal
@@ -48,9 +49,20 @@ class ChunksUploadHandler(SimpleHTTPRequestHandler):
         if self.path.startswith("/recording-status"):
             self._handle_recording_status()
             return
+        if self.path.startswith("/events-list"):
+            self._handle_events_list()
+            return
         if self.path.startswith("/files/") and self._serve_merged_recording():
             return
         super().do_GET()
+
+    def _handle_events_list(self):
+        body = json.dumps(list_events(self.events_file)).encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
     def _serve_merged_recording(self) -> bool:
         """Streams a recording's chunks concatenated as one download, for
@@ -137,6 +149,8 @@ class ChunksUploadHandler(SimpleHTTPRequestHandler):
     def do_POST(self):
         if self.path.startswith("/upload"):
             self._handle_upload()
+        elif self.path.startswith("/lance-clip"):
+            self._handle_lance_clip()
         elif self.path.startswith("/events"):
             self._handle_event()
         elif self.path.startswith("/session-start"):
@@ -198,6 +212,26 @@ class ChunksUploadHandler(SimpleHTTPRequestHandler):
 
         with self.sessions_lock:
             record_chunk(self.sessions_registry, camera_id, len(data), now=time.time())
+
+        self.send_response(204)
+        self.end_headers()
+
+    def _handle_lance_clip(self):
+        query = parse_qs(urlparse(self.path).query)
+        try:
+            camera_id = query["camera"][0]
+            nome = query["nome"][0]
+        except (KeyError, IndexError):
+            self.send_response(400)
+            self.end_headers()
+            return
+
+        length = int(self.headers.get("Content-Length", 0))
+        data = self.rfile.read(length)
+
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        day_dir = build_day_dir(self.storage_root, session_id=today)
+        save_lance_clip(day_dir, camera_id, nome, data)
 
         self.send_response(204)
         self.end_headers()

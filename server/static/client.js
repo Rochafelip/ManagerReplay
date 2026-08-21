@@ -169,6 +169,43 @@ qualitySelectEl.addEventListener("change", () => {
   switchVideoTrack(buildVideoConstraints(activeDeviceId), { quality });
 });
 
+// Rolling buffer for "Lance" clips: a second MediaRecorder on the same
+// stream, running back-to-back self-contained windows (each stop() yields
+// a complete, independently playable webm — unlike the 30s chunks above,
+// which are Matroska continuation clusters that only play when concatenated
+// from part 1). Pressing "Lance" ships the most recently completed window,
+// so the clip covers roughly the LANCE_WINDOW_MS before the click, not an
+// exact cut — see the design discussion for why an exact cut would need
+// ffmpeg re-encoding on the Pi.
+const LANCE_WINDOW_MS = 10000;
+let lanceRingRecorder = null;
+let latestLanceClipBlob = null;
+
+function startLanceRingWindow() {
+  const chunks = [];
+  lanceRingRecorder = new MediaRecorder(mediaStream, { mimeType: "video/webm;codecs=vp8" });
+  lanceRingRecorder.ondataavailable = (event) => {
+    if (event.data.size > 0) chunks.push(event.data);
+  };
+  lanceRingRecorder.onstop = () => {
+    latestLanceClipBlob = new Blob(chunks, { type: "video/webm" });
+    if (recorder && recorder.state === "recording") startLanceRingWindow();
+  };
+  lanceRingRecorder.start();
+  setTimeout(() => {
+    if (lanceRingRecorder && lanceRingRecorder.state === "recording") lanceRingRecorder.stop();
+  }, LANCE_WINDOW_MS);
+}
+
+function stopLanceRingWindow() {
+  if (lanceRingRecorder && lanceRingRecorder.state === "recording") {
+    lanceRingRecorder.onstop = null;
+    lanceRingRecorder.stop();
+  }
+  lanceRingRecorder = null;
+  latestLanceClipBlob = null;
+}
+
 let mediaStream = null;
 let recorder = null;
 let lastUploadPromise = Promise.resolve();
@@ -199,6 +236,7 @@ function beginRecording() {
   };
 
   recorder.start(30000);
+  startLanceRingWindow();
 
   fetch(`/session-start?camera=${cameraId}&name=${encodeURIComponent(operatorName)}&quality=${quality}`, {
     method: "POST",
@@ -223,6 +261,7 @@ function showSavedToast() {
 
 async function endRecording() {
   recordToggleEl.disabled = true;
+  stopLanceRingWindow();
   const stopped = new Promise((resolve) => {
     recorder.onstop = resolve;
   });
@@ -299,6 +338,13 @@ lanceButtonEl.addEventListener("click", async () => {
     const response = await fetch(`/events?camera=${cameraId}`, { method: "POST" });
     const event = await response.json();
     notifyLancePressed(`✅ ${event.nome} registrado`);
+
+    if (latestLanceClipBlob) {
+      fetch(`/lance-clip?camera=${cameraId}&nome=${encodeURIComponent(event.nome)}`, {
+        method: "POST",
+        body: latestLanceClipBlob,
+      });
+    }
   } catch (err) {
     notifyLancePressed(`erro ao registrar lance: ${err.message}`);
   }

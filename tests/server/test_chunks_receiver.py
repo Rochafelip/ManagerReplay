@@ -196,6 +196,52 @@ def test_events_route_records_lance_and_returns_it(tmp_path: Path, self_signed_c
         thread.join(timeout=2)
 
 
+def test_events_list_route_returns_recorded_events(tmp_path: Path, self_signed_cert):
+    cert_path, key_path = self_signed_cert
+    server, thread, port = _start_server(tmp_path, cert_path, key_path)
+
+    try:
+        conn = _https_connection(port)
+        conn.request("POST", "/events?camera=1")
+        conn.getresponse().read()
+
+        conn = _https_connection(port)
+        conn.request("GET", "/events-list")
+        response = conn.getresponse()
+        body = json.loads(response.read())
+        assert response.status == 200
+        assert len(body) == 1
+        assert body[0]["nome"] == "LanceEpico 001"
+        assert body[0]["camera"] == "1"
+    finally:
+        server.shutdown()
+        thread.join(timeout=2)
+
+
+def test_lance_clip_route_saves_uploaded_clip_under_lances_subfolder(tmp_path: Path, self_signed_cert):
+    cert_path, key_path = self_signed_cert
+    storage_root = tmp_path / "storage"
+    server, thread, port = _start_server(tmp_path, cert_path, key_path, storage_root)
+
+    try:
+        conn = _https_connection(port)
+        conn.request(
+            "POST",
+            "/lance-clip?camera=2&nome=LanceEpico+001",
+            body=b"clip-bytes",
+        )
+        response = conn.getresponse()
+        response.read()
+        assert response.status == 204
+    finally:
+        server.shutdown()
+        thread.join(timeout=2)
+
+    saved = list(storage_root.glob("*/lances/lance_camera2_LanceEpico001.webm"))
+    assert len(saved) == 1
+    assert saved[0].read_bytes() == b"clip-bytes"
+
+
 def test_files_list_route_returns_directory_entries(tmp_path: Path, self_signed_cert):
     cert_path, key_path = self_signed_cert
     storage_root = tmp_path / "storage"
