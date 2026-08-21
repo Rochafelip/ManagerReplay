@@ -310,37 +310,69 @@ qualitySelectEl.addEventListener("change", () => {
 // stream, running back-to-back self-contained windows (each stop() yields
 // a complete, independently playable webm — unlike the 30s chunks above,
 // which are Matroska continuation clusters that only play when concatenated
-// from part 1). Pressing "Lance" ships the most recently completed window,
-// so the clip covers roughly the LANCE_WINDOW_MS before the click, not an
-// exact cut — see the design discussion for why an exact cut would need
-// ffmpeg re-encoding on the Pi.
+// from part 1).
+//
+// Pressing "Lance" ends the CURRENT window right then — instead of handing
+// over whatever window had already finished — so the clip always covers up
+// to the exact moment of the click (never misses it), at the cost of a
+// variable clip length: up to LANCE_WINDOW_MS if clicked right before a
+// natural rollover, as little as a couple seconds if clicked right after a
+// fresh window started. A fixed-length "always the last full window"
+// version used to leave a gap between when that window ended and the
+// actual click — this trades a predictable duration for never losing the
+// moment itself. Still no exact "N seconds before" cut, and still no
+// ffmpeg re-encoding on the Pi — see the design discussion for why.
 const LANCE_WINDOW_MS = 10000;
 let lanceRingRecorder = null;
-let latestLanceClipBlob = null;
+let lanceRingTimeoutId = null;
+let lanceRingChunks = [];
 
 function startLanceRingWindow() {
-  const chunks = [];
+  lanceRingChunks = [];
   lanceRingRecorder = new MediaRecorder(mediaStream, { mimeType: "video/webm;codecs=vp8" });
   lanceRingRecorder.ondataavailable = (event) => {
-    if (event.data.size > 0) chunks.push(event.data);
-  };
-  lanceRingRecorder.onstop = () => {
-    latestLanceClipBlob = new Blob(chunks, { type: "video/webm" });
-    if (recorder && recorder.state === "recording") startLanceRingWindow();
+    if (event.data.size > 0) lanceRingChunks.push(event.data);
   };
   lanceRingRecorder.start();
-  setTimeout(() => {
-    if (lanceRingRecorder && lanceRingRecorder.state === "recording") lanceRingRecorder.stop();
-  }, LANCE_WINDOW_MS);
+  lanceRingTimeoutId = setTimeout(rolloverLanceRingWindow, LANCE_WINDOW_MS);
+}
+
+// Natural end of a window nobody clipped — just resets the clock so a
+// window is never more than LANCE_WINDOW_MS long by the time it's used.
+function rolloverLanceRingWindow() {
+  if (!lanceRingRecorder || lanceRingRecorder.state !== "recording") return;
+  lanceRingRecorder.onstop = () => {
+    if (recorder && recorder.state === "recording") startLanceRingWindow();
+  };
+  lanceRingRecorder.stop();
+}
+
+// Ends the current window right now and starts the next one once it's
+// done. Resolves with the finished clip, or null if there's no active
+// window to capture from (e.g. called outside a recording session).
+function captureLanceClip() {
+  if (!lanceRingRecorder || lanceRingRecorder.state !== "recording") return Promise.resolve(null);
+
+  clearTimeout(lanceRingTimeoutId);
+  const recorderToStop = lanceRingRecorder;
+  const chunksToKeep = lanceRingChunks;
+  return new Promise((resolve) => {
+    recorderToStop.onstop = () => {
+      resolve(new Blob(chunksToKeep, { type: "video/webm" }));
+      if (recorder && recorder.state === "recording") startLanceRingWindow();
+    };
+    recorderToStop.stop();
+  });
 }
 
 function stopLanceRingWindow() {
+  clearTimeout(lanceRingTimeoutId);
   if (lanceRingRecorder && lanceRingRecorder.state === "recording") {
     lanceRingRecorder.onstop = null;
     lanceRingRecorder.stop();
   }
   lanceRingRecorder = null;
-  latestLanceClipBlob = null;
+  lanceRingChunks = [];
 }
 
 let mediaStream = null;
@@ -489,15 +521,19 @@ function notifyLancePressed(message) {
 }
 
 lanceButtonEl.addEventListener("click", async () => {
+  // Kicked off before anything else so the clip's cutoff is as close to the
+  // actual click as possible, instead of waiting on the /events round trip.
+  const clipPromise = captureLanceClip();
   try {
     const response = await fetch(`/events?camera=${cameraId}`, { method: "POST" });
     const event = await response.json();
     notifyLancePressed(`✅ ${event.nome} registrado`);
 
-    if (latestLanceClipBlob) {
+    const clipBlob = await clipPromise;
+    if (clipBlob) {
       fetch(`/lance-clip?camera=${cameraId}&nome=${encodeURIComponent(event.nome)}`, {
         method: "POST",
-        body: latestLanceClipBlob,
+        body: clipBlob,
       });
     }
   } catch (err) {
