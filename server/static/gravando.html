@@ -6,80 +6,83 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="icons/icon-32.png" sizes="32x32" type="image/png" />
   <link rel="apple-touch-icon" href="icons/icon-180.png" />
-  <meta name="theme-color" content="#0b0f14" />
+  <meta name="theme-color" content="#f1f5f9" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>ManagerReplay — Quem está gravando</title>
+  <link rel="stylesheet" href="theme.css" />
   <style>
-    * { box-sizing: border-box; }
-    html { min-height: 100%; background: #0b0f14; color-scheme: dark; }
-    body {
-      min-height: 100dvh;
-      margin: 0;
-      padding: max(22px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) 18px max(18px, env(safe-area-inset-left));
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background: #0b0f14;
-      color: #f3f4f6;
-      -webkit-font-smoothing: antialiased;
-      -webkit-tap-highlight-color: transparent;
-    }
-    h1 { font-size: 1.3rem; font-weight: 800; margin: 0 0 4px; letter-spacing: -0.01em; }
-    .subtitle { color: #6b7280; font-size: 0.85rem; margin: 0 0 22px; }
-    .card {
-      background: #111720;
-      border: 1px solid #202833;
-      border-radius: 15px;
-      padding: 15px 16px;
-      margin-bottom: 12px;
-    }
+    .rec-card { padding: 15px 16px; margin-bottom: 12px; }
     .card-top {
       display: flex;
       align-items: baseline;
       justify-content: space-between;
+      gap: 10px;
     }
-    .card-name { font-size: 1.08rem; font-weight: 700; }
-    .card-camera { color: #6b7280; font-size: 0.8rem; }
+    .card-name { font-size: 1.08rem; font-weight: 800; }
+    .card-camera { display: flex; align-items: center; gap: 5px; color: var(--text-secondary); font-size: 0.8rem; font-weight: 600; flex-shrink: 0; }
+    .card-camera .icon { color: var(--accent); }
     .card-elapsed {
-      font-size: 1.5rem;
+      font-size: 1.6rem;
       font-weight: 800;
-      color: #4ade80;
+      font-variant-numeric: tabular-nums;
+      color: var(--danger);
       margin-top: 4px;
     }
     .card-meta {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 10px;
       margin-top: 10px;
       padding-top: 10px;
-      border-top: 1px solid #202833;
+      border-top: 1px solid var(--border);
       font-size: 0.78rem;
-      color: #6b7280;
+      color: var(--text-muted);
     }
-    .signal { font-weight: 700; }
-    .signal.ok { color: #4ade80; }
-    .signal.bad { color: #f87171; }
-    #empty { color: #6b7280; text-align: center; padding: 2em 0; }
-    a.back-link {
-      display: inline-flex;
-      align-items: center;
-      margin-top: 1.5em;
-      color: #93c5fd;
-      font-size: 0.87rem;
-      font-weight: 600;
-      text-decoration: none;
-    }
+    .signal { display: flex; align-items: center; gap: 5px; font-weight: 700; flex-shrink: 0; }
+    .signal .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+    .signal.ok { color: var(--success); }
+    .signal.ok .dot { background: var(--success); animation: pulse 1.2s infinite; }
+    .signal.bad { color: var(--danger); }
+    .signal.bad .dot { background: var(--danger); }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+    #empty { color: var(--text-muted); text-align: center; padding: 2.5em 0; font-size: 0.9rem; }
   </style>
 </head>
 <body>
-  <h1>🎥 Quem está gravando</h1>
-  <p class="subtitle">Atualiza a cada 3s</p>
+  <div class="page">
 
-  <div id="content"></div>
-  <a class="back-link" href="index.html">&larr; voltar ao menu</a>
+    <header class="topbar">
+      <a class="brand" href="index.html">
+        <span class="brand-mark">
+          <svg class="icon" viewBox="0 0 24 24"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
+        </span>
+        ManagerReplay
+      </a>
+    </header>
+
+    <h1 class="page-title">
+      <svg class="icon" viewBox="0 0 24 24"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
+      Quem está gravando
+    </h1>
+    <p class="subtitle">Atualiza a cada 3s.</p>
+
+    <div id="content"></div>
+
+    <a class="back-link" href="index.html">
+      <svg class="icon" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+      Voltar ao menu
+    </a>
+
+  </div>
 
   <script>
     const contentEl = document.getElementById("content");
     const STALE_THRESHOLD_SECONDS = 30;
+
+    const ICON_CAMERA = '<svg class="icon" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>';
 
     const QUALITY_LABELS = {
       hd30: "HD · 30fps",
@@ -87,6 +90,12 @@
       fhd30: "FHD · 30fps",
       fhd60: "FHD · 60fps",
     };
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, (ch) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+      })[ch]);
+    }
 
     function formatElapsed(totalSeconds) {
       const minutes = Math.floor(totalSeconds / 60);
@@ -102,22 +111,22 @@
 
     function signalIndicator(session) {
       if (session.seconds_since_last_chunk === null) {
-        return `<span class="signal ok">🟢 aguardando primeiro envio</span>`;
+        return `<span class="signal ok"><span class="dot"></span>aguardando primeiro envio</span>`;
       }
       if (session.seconds_since_last_chunk >= STALE_THRESHOLD_SECONDS) {
-        return `<span class="signal bad">🔴 sem sinal há ${session.seconds_since_last_chunk}s</span>`;
+        return `<span class="signal bad"><span class="dot"></span>sem sinal há ${session.seconds_since_last_chunk}s</span>`;
       }
-      return `<span class="signal ok">🟢 enviando</span>`;
+      return `<span class="signal ok"><span class="dot"></span>enviando</span>`;
     }
 
     function renderCard(session) {
       const name = session.name || "(sem nome)";
       const quality = QUALITY_LABELS[session.quality] || session.quality || "—";
       return `
-        <div class="card">
+        <div class="card rec-card">
           <div class="card-top">
-            <span class="card-name">${name}</span>
-            <span class="card-camera">📹 Câmera ${session.camera}</span>
+            <span class="card-name">${escapeHtml(name)}</span>
+            <span class="card-camera">${ICON_CAMERA} Câmera ${escapeHtml(session.camera)}</span>
           </div>
           <div class="card-elapsed">${formatElapsed(session.elapsed_seconds)}</div>
           <div class="card-meta">
@@ -143,7 +152,7 @@
         const sessions = await response.json();
         render(sessions);
       } catch (err) {
-        contentEl.innerHTML = `<div id="empty">erro: ${err.message}</div>`;
+        contentEl.innerHTML = `<div id="empty">erro: ${escapeHtml(err.message)}</div>`;
       }
     }
 

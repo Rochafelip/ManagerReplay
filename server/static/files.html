@@ -6,68 +6,115 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="icons/icon-32.png" sizes="32x32" type="image/png" />
   <link rel="apple-touch-icon" href="icons/icon-180.png" />
-  <meta name="theme-color" content="#0b0f14" />
+  <meta name="theme-color" content="#f1f5f9" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>ManagerReplay — Arquivos</title>
+  <link rel="stylesheet" href="theme.css" />
   <style>
-    * { box-sizing: border-box; }
-    html { min-height: 100%; background: #0b0f14; color-scheme: dark; }
-    body {
-      min-height: 100dvh;
-      margin: 0;
-      padding: max(22px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) 18px max(18px, env(safe-area-inset-left));
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background: #0b0f14;
-      color: #f3f4f6;
-      -webkit-font-smoothing: antialiased;
-      -webkit-tap-highlight-color: transparent;
-    }
-    h1 { font-size: 1.3rem; font-weight: 800; margin: 0 0 12px; letter-spacing: -0.01em; }
     #breadcrumb {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 4px;
       font-size: 0.82rem;
-      color: #6b7280;
-      margin-bottom: 16px;
-      word-break: break-all;
+      color: var(--text-muted);
+      margin-bottom: 18px;
+      word-break: break-word;
     }
-    #breadcrumb a { color: #93c5fd; text-decoration: none; }
+    #breadcrumb a { color: var(--accent); text-decoration: none; font-weight: 600; }
+
     .entry {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      background: #111720;
-      border: 1px solid #202833;
-      border-radius: 13px;
+      gap: 12px;
       padding: 14px 16px;
       margin-bottom: 9px;
       text-decoration: none;
       color: inherit;
+      transition: transform 0.12s ease;
     }
-    .entry-name { font-size: 1rem; font-weight: 700; }
-    .entry-meta { font-size: 0.76rem; color: #6b7280; margin-top: 3px; }
+    .entry:active { transform: scale(0.99); }
+
+    .entry-icon {
+      flex: 0 0 auto;
+      width: 40px;
+      height: 40px;
+      border-radius: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .entry-icon.tone-folder { background: var(--accent-soft); color: var(--accent); }
+    .entry-icon.tone-file { background: #f1f5f9; color: #475569; border: 1px solid var(--border); }
+
+    .entry-body { min-width: 0; flex: 1; }
+    .entry-name { font-size: 0.98rem; font-weight: 700; overflow-wrap: break-word; }
+    .entry-meta { font-size: 0.76rem; color: var(--text-muted); margin-top: 3px; }
+
     .entry-action {
-      background: #16a34a;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
       color: #fff;
-      padding: 8px 14px;
-      border-radius: 9px;
+      padding: 9px 14px;
+      border-radius: var(--radius-sm);
       font-weight: 700;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       flex-shrink: 0;
-      margin-left: 12px;
     }
-    .entry-chevron { color: #4b5563; font-size: 1.25em; flex-shrink: 0; margin-left: 12px; }
-    #empty { color: #6b7280; text-align: center; padding: 2em 0; }
-    a.back-link { display: inline-flex; align-items: center; margin-top: 1em; color: #93c5fd; font-size: 0.87rem; font-weight: 600; text-decoration: none; }
+    .entry-chevron { color: var(--text-muted); flex-shrink: 0; }
+
+    #empty {
+      color: var(--text-muted);
+      text-align: center;
+      padding: 2.5em 0;
+      font-size: 0.9rem;
+    }
   </style>
 </head>
 <body>
-  <h1>📁 Arquivos</h1>
-  <div id="breadcrumb"></div>
-  <div id="listing"></div>
-  <a class="back-link" href="index.html">&larr; voltar ao menu</a>
+  <div class="page">
+
+    <header class="topbar">
+      <a class="brand" href="index.html">
+        <span class="brand-mark">
+          <svg class="icon" viewBox="0 0 24 24"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
+        </span>
+        ManagerReplay
+      </a>
+    </header>
+
+    <h1 class="page-title">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
+      Arquivos
+    </h1>
+
+    <div id="breadcrumb"></div>
+    <div id="listing"></div>
+
+    <a class="back-link" href="index.html">
+      <svg class="icon" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+      Voltar ao menu
+    </a>
+
+  </div>
+
   <script>
     const params = new URLSearchParams(window.location.search);
     const currentPath = params.get("path") || "";
+
+    const ICON_FOLDER = '<svg class="icon" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>';
+    const ICON_CALENDAR = '<svg class="icon" viewBox="0 0 24 24"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>';
+    const ICON_CHEVRON = '<svg class="icon entry-chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>';
+    const ICON_DOWNLOAD = '<svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>';
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, (ch) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+      })[ch]);
+    }
 
     function formatBytes(bytes) {
       if (bytes < 1024) return `${bytes} B`;
@@ -87,7 +134,7 @@
       let accPath = "";
       for (const part of parts) {
         accPath += (accPath ? "/" : "") + part;
-        html += ` / <a href="files.html?path=${encodeURIComponent(accPath)}">${part}</a>`;
+        html += ` <span>/</span> <a href="files.html?path=${encodeURIComponent(accPath)}">${escapeHtml(part)}</a>`;
       }
       breadcrumbEl.innerHTML = html;
     }
@@ -96,36 +143,39 @@
 
     function formatFolderLabel(name) {
       const match = name.match(DAY_FOLDER_PATTERN);
-      if (!match) return `📁 ${name}`;
+      if (!match) return escapeHtml(name);
       const [, year, month, day] = match;
-      return `📅 Replay do dia ${day}/${month}/${year}`;
+      return `Replay do dia ${day}/${month}/${year}`;
     }
 
     function renderEntry(entry) {
       const childPath = currentPath ? `${currentPath}/${entry.name}` : entry.name;
       if (entry.is_dir) {
+        const isDayFolder = DAY_FOLDER_PATTERN.test(entry.name);
         const a = document.createElement("a");
-        a.className = "entry";
+        a.className = "entry card";
         a.href = `files.html?path=${encodeURIComponent(childPath)}`;
         a.innerHTML = `
-          <div>
+          <div class="entry-icon tone-folder">${isDayFolder ? ICON_CALENDAR : ICON_FOLDER}</div>
+          <div class="entry-body">
             <div class="entry-name">${formatFolderLabel(entry.name)}</div>
             <div class="entry-meta">pasta</div>
           </div>
-          <div class="entry-chevron">›</div>
+          ${ICON_CHEVRON}
         `;
         return a;
       }
       const a = document.createElement("a");
-      a.className = "entry";
+      a.className = "entry card";
       a.href = `/files/${childPath}`;
       a.download = entry.name;
       a.innerHTML = `
-        <div>
-          <div class="entry-name">${entry.name}</div>
+        <div class="entry-icon tone-file">${ICON_FOLDER}</div>
+        <div class="entry-body">
+          <div class="entry-name">${escapeHtml(entry.name)}</div>
           <div class="entry-meta">${formatBytes(entry.size)} · ${formatDate(entry.mtime)}</div>
         </div>
-        <div class="entry-action">⬇</div>
+        <div class="entry-action">${ICON_DOWNLOAD} Baixar</div>
       `;
       return a;
     }
@@ -143,7 +193,7 @@
         }
         entries.forEach((entry) => listingEl.appendChild(renderEntry(entry)));
       } catch (err) {
-        listingEl.innerHTML = `<div id="empty">erro: ${err.message}</div>`;
+        listingEl.innerHTML = `<div id="empty">erro: ${escapeHtml(err.message)}</div>`;
       }
     }
 

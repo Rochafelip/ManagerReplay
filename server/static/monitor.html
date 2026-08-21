@@ -6,103 +6,127 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="icons/icon-32.png" sizes="32x32" type="image/png" />
   <link rel="apple-touch-icon" href="icons/icon-180.png" />
-  <meta name="theme-color" content="#0b0f14" />
+  <meta name="theme-color" content="#f1f5f9" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>ManagerReplay — Monitor</title>
+  <link rel="stylesheet" href="theme.css" />
   <style>
-    * { box-sizing: border-box; }
-    html { min-height: 100%; background: #0b0f14; color-scheme: dark; }
-    body {
-      min-height: 100dvh;
-      margin: 0;
-      padding: max(22px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) 18px max(18px, env(safe-area-inset-left));
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background: #0b0f14;
-      color: #f3f4f6;
-      -webkit-font-smoothing: antialiased;
-      -webkit-tap-highlight-color: transparent;
-    }
-    h1 { font-size: 1.3rem; font-weight: 800; margin: 0 0 4px; letter-spacing: -0.01em; }
-    .subtitle { color: #6b7280; font-size: 0.85rem; margin: 0 0 20px; line-height: 1.4; }
     .grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 10px;
     }
-    .card {
-      background: #111720;
-      border: 1px solid #202833;
-      border-radius: 14px;
-      padding: 14px;
-    }
-    .card .label {
+    .stat-card { padding: 14px; }
+    .stat-card .label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
       font-size: 0.7rem;
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      font-weight: 700;
-      color: #93c5fd;
-      margin-bottom: 6px;
+      font-weight: 800;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
     }
-    .card .value { font-size: 1.6rem; font-weight: 800; }
-    .card .value.ok { color: #4ade80; }
-    .card .value.warn { color: #f59e0b; }
-    .card .value.bad { color: #dc2626; }
+    .stat-card .label .icon { color: var(--accent); }
+    .stat-card .value { font-size: 1.6rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .stat-card .value .value-detail { font-size: 0.5em; color: var(--text-muted); font-weight: 600; }
+    .stat-card .value.ok { color: var(--success); }
+    .stat-card .value.warn { color: var(--warning-hover); }
+    .stat-card .value.bad { color: var(--danger); }
+
     #alerts { margin-top: 12px; }
     .alert {
-      background: rgba(220, 38, 38, 0.15);
-      border: 1px solid #dc2626;
-      color: #f87171;
-      border-radius: 12px;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      background: var(--danger-soft);
+      border: 1px solid #fca5a5;
+      color: #991b1b;
+      border-radius: var(--radius-sm);
       padding: 11px 14px;
       margin-bottom: 8px;
       font-size: 0.86rem;
       font-weight: 600;
+      line-height: 1.4;
     }
-    #last-updated { font-size: 0.78rem; color: #6b7280; margin-top: 16px; }
+    .alert .icon { flex: none; margin-top: 0.15em; }
+    .alert.info { background: var(--accent-soft); border-color: #c7d2fe; color: #3730a3; }
+
+    #last-updated { font-size: 0.78rem; color: var(--text-muted); margin-top: 16px; }
+
     #error-banner {
-      background: rgba(220, 38, 38, 0.15);
-      border: 1px solid #dc2626;
-      border-radius: 12px;
+      background: var(--danger-soft);
+      border: 1px solid #fca5a5;
+      border-radius: var(--radius-sm);
       padding: 1em;
-      color: #f87171;
+      color: #991b1b;
       font-size: 0.9em;
     }
-    a.back-link {
-      display: inline-flex;
-      align-items: center;
-      margin-top: 1.5em;
-      color: #93c5fd;
-      font-size: 0.87rem;
-      font-weight: 600;
-      text-decoration: none;
-    }
+
     #refresh-button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
       width: 100%;
       margin-top: 14px;
-      padding: 14px;
+      padding: 15px;
       font-size: 0.98rem;
-      font-weight: 700;
+      font-weight: 800;
       border: none;
-      border-radius: 13px;
-      background: #2563eb;
+      border-radius: var(--radius-md);
+      background: var(--accent);
       color: #fff;
+      cursor: pointer;
+      box-shadow: 0 10px 24px rgba(79, 70, 229, 0.3);
+      transition: transform 0.12s ease, background 0.15s ease;
     }
-    #refresh-button:disabled { opacity: 0.6; }
+    #refresh-button:active { background: var(--accent-hover); transform: scale(0.98); }
+    #refresh-button:disabled { opacity: 0.6; box-shadow: none; }
+    #refresh-button .icon.spin { animation: spin 0.9s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
-  <h1>📊 Monitor da Pi</h1>
-  <p class="subtitle">CPU, memória e temperatura medidas na hora — sem nada rodando em background</p>
+  <div class="page">
 
-  <div id="content"><p class="subtitle">Medindo...</p></div>
-  <button id="refresh-button" type="button">🔄 Atualizar</button>
-  <div id="last-updated"></div>
-  <a class="back-link" href="index.html">&larr; voltar ao menu</a>
+    <header class="topbar">
+      <a class="brand" href="index.html">
+        <span class="brand-mark">
+          <svg class="icon" viewBox="0 0 24 24"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
+        </span>
+        ManagerReplay
+      </a>
+    </header>
+
+    <h1 class="page-title">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      Monitor da Pi
+    </h1>
+    <p class="subtitle">CPU, memória e temperatura medidas na hora — sem nada rodando em background.</p>
+
+    <div id="content"><p class="subtitle">Medindo...</p></div>
+    <button id="refresh-button" type="button">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+      <span id="refresh-button-label">Atualizar</span>
+    </button>
+    <div id="last-updated"></div>
+
+    <a class="back-link" href="index.html">
+      <svg class="icon" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+      Voltar ao menu
+    </a>
+
+  </div>
 
   <script>
     const contentEl = document.getElementById("content");
     const lastUpdatedEl = document.getElementById("last-updated");
+
+    const ICON_ALERT = '<svg class="icon" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>';
+    const ICON_INFO = '<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>';
 
     function cpuClass(pct) {
       if (pct >= 90) return "bad";
@@ -131,43 +155,46 @@
       const ramPct = ((status.ram_used_mb / status.ram_total_mb) * 100).toFixed(0);
       const diskPct = ((status.disk_used_mb / status.disk_total_mb) * 100).toFixed(0);
       const alerts = [];
-      if (status.undervoltage_now) alerts.push("⚠️ Subvoltagem ATIVA AGORA — fonte fraca, troque o carregador.");
-      if (status.freq_capped_now || status.throttled_now) alerts.push("⚠️ CPU sendo limitada agora por energia/temperatura.");
-      if (status.undervoltage_ever) alerts.push("ℹ️ Já ocorreu subvoltagem desde que a Pi ligou.");
+      if (status.undervoltage_now) alerts.push({ icon: ICON_ALERT, tone: "", text: "Subvoltagem ATIVA AGORA — fonte fraca, troque o carregador." });
+      if (status.freq_capped_now || status.throttled_now) alerts.push({ icon: ICON_ALERT, tone: "", text: "CPU sendo limitada agora por energia/temperatura." });
+      if (status.undervoltage_ever) alerts.push({ icon: ICON_INFO, tone: "info", text: "Já ocorreu subvoltagem desde que a Pi ligou." });
 
       contentEl.innerHTML = `
         <div class="grid">
-          <div class="card">
+          <div class="card stat-card">
             <div class="label">CPU</div>
             <div class="value ${cpuClass(status.cpu_pct)}">${status.cpu_pct.toFixed(1)}%</div>
           </div>
-          <div class="card">
+          <div class="card stat-card">
             <div class="label">Temperatura</div>
             <div class="value ${tempClass(status.temp_c)}">${status.temp_c.toFixed(1)}°C</div>
           </div>
-          <div class="card">
+          <div class="card stat-card">
             <div class="label">RAM</div>
-            <div class="value">${status.ram_used_mb} MB<br /><span style="font-size:0.5em;color:#999;">de ${status.ram_total_mb} MB (${ramPct}%)</span></div>
+            <div class="value">${status.ram_used_mb} MB<br /><span class="value-detail">de ${status.ram_total_mb} MB (${ramPct}%)</span></div>
           </div>
-          <div class="card">
+          <div class="card stat-card">
             <div class="label">Clock CPU / GPU</div>
             <div class="value" style="font-size:1.1em;">${status.arm_clock_mhz} / ${status.core_clock_mhz} MHz</div>
           </div>
-          <div class="card" style="grid-column: 1 / -1;">
+          <div class="card stat-card" style="grid-column: 1 / -1;">
             <div class="label">Armazenamento</div>
-            <div class="value ${diskClass(diskPct)}">${formatStorage(status.disk_used_mb)}<br /><span style="font-size:0.5em;color:#999;">de ${formatStorage(status.disk_total_mb)} (${diskPct}%)</span></div>
+            <div class="value ${diskClass(diskPct)}">${formatStorage(status.disk_used_mb)}<br /><span class="value-detail">de ${formatStorage(status.disk_total_mb)} (${diskPct}%)</span></div>
           </div>
         </div>
-        <div id="alerts">${alerts.map((a) => `<div class="alert">${a}</div>`).join("")}</div>
+        <div id="alerts">${alerts.map((a) => `<div class="alert ${a.tone}">${a.icon}<span>${a.text}</span></div>`).join("")}</div>
       `;
       lastUpdatedEl.textContent = `Última leitura: ${status.timestamp}`;
     }
 
     const refreshButtonEl = document.getElementById("refresh-button");
+    const refreshButtonLabelEl = document.getElementById("refresh-button-label");
+    const refreshButtonIconEl = refreshButtonEl.querySelector(".icon");
 
     async function measure() {
       refreshButtonEl.disabled = true;
-      refreshButtonEl.textContent = "Medindo...";
+      refreshButtonLabelEl.textContent = "Medindo...";
+      refreshButtonIconEl.classList.add("spin");
       try {
         const response = await fetch("/monitor-status");
         if (!response.ok) throw new Error("não foi possível medir agora");
@@ -177,7 +204,8 @@
         contentEl.innerHTML = `<div id="error-banner">Não foi possível ler o status: ${err.message}</div>`;
       } finally {
         refreshButtonEl.disabled = false;
-        refreshButtonEl.textContent = "🔄 Atualizar";
+        refreshButtonLabelEl.textContent = "Atualizar";
+        refreshButtonIconEl.classList.remove("spin");
       }
     }
 

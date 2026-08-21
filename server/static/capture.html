@@ -12,58 +12,22 @@
   <link rel="icon" href="icons/icon-32.png" sizes="32x32" type="image/png" />
   <link rel="apple-touch-icon" href="icons/icon-180.png" />
 
-  <meta name="theme-color" content="#0b0f14" />
+  <meta name="theme-color" content="#f8fafc" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta
     name="apple-mobile-web-app-status-bar-style"
-    content="black-translucent"
+    content="default"
   />
 
   <title>ManagerReplay</title>
 
+  <link rel="stylesheet" href="theme.css" />
+
   <style>
-    /* =========================================================
-       RESET
-       ========================================================= */
-
-    *,
-    *::before,
-    *::after {
-      box-sizing: border-box;
-    }
-
-    html {
-      min-height: 100%;
-      background: #0b0f14;
-      color-scheme: dark;
-    }
+    /* Tokens, reset, .icon/.icon-fill, .card, a.back-link e foco vêm de theme.css */
 
     body {
       min-width: 100%;
-      min-height: 100dvh;
-
-      margin: 0;
-
-      font-family:
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        Roboto,
-        Helvetica,
-        Arial,
-        sans-serif;
-
-      background: #0b0f14;
-      color: #f3f4f6;
-
-      -webkit-font-smoothing: antialiased;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    button,
-    select {
-      font: inherit;
-      touch-action: manipulation;
     }
 
 
@@ -87,6 +51,16 @@
 
 
     /* =========================================================
+       TOPBAR (base em theme.css)
+       ========================================================= */
+
+    .topbar {
+      padding: 14px 16px 6px;
+      margin-bottom: 0;
+    }
+
+
+    /* =========================================================
        VIDEO
        ========================================================= */
 
@@ -94,6 +68,7 @@
       position: relative;
 
       width: 100%;
+      margin: 8px 0 0;
 
       /*
        * Um pouco mais baixo que 9:16.
@@ -101,11 +76,12 @@
        */
       aspect-ratio: 4 / 5;
 
-      background: #000;
+      background: #0f172a;
 
       overflow: hidden;
 
-      border-radius: 0;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-md);
 
       isolation: isolate;
     }
@@ -119,7 +95,7 @@
 
       display: block;
 
-      background: #000;
+      background: #0f172a;
 
       object-fit: cover;
     }
@@ -138,16 +114,21 @@
 
       z-index: 2;
 
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+
       padding:
-        max(12px, env(safe-area-inset-top))
+        max(14px, env(safe-area-inset-top))
         14px
-        30px
+        36px
         14px;
 
       background:
         linear-gradient(
           to bottom,
-          rgba(0, 0, 0, 0.65),
+          rgba(0, 0, 0, 0.55),
           rgba(0, 0, 0, 0)
         );
     }
@@ -168,14 +149,14 @@
 
       padding:
         55px
-        14px
-        max(14px, env(safe-area-inset-bottom))
-        14px;
+        16px
+        max(16px, env(safe-area-inset-bottom))
+        16px;
 
       background:
         linear-gradient(
           to top,
-          rgba(0, 0, 0, 0.88),
+          rgba(0, 0, 0, 0.82),
           rgba(0, 0, 0, 0)
         );
     }
@@ -185,8 +166,7 @@
        BADGES
        ========================================================= */
 
-    #rec-badge,
-    #operator-badge {
+    .badge {
       display: inline-flex;
 
       align-items: center;
@@ -194,7 +174,7 @@
 
       width: fit-content;
 
-      padding: 6px 10px;
+      padding: 7px 12px 7px 10px;
 
       border-radius: 999px;
 
@@ -207,22 +187,15 @@
       -webkit-backdrop-filter: blur(8px);
     }
 
-    #rec-badge {
-      background: rgba(220, 38, 38, 0.94);
-    }
-
-    #rec-badge[hidden],
-    #operator-badge[hidden] {
+    .badge[hidden] {
       display: none;
     }
 
-    #operator-badge {
-      margin-top: 7px;
-
-      background: rgba(22, 163, 74, 0.94);
+    .badge-rec {
+      background: rgba(220, 38, 38, 0.94);
     }
 
-    #rec-badge .dot {
+    .badge-rec .dot {
       width: 8px;
       height: 8px;
 
@@ -246,53 +219,95 @@
       }
     }
 
+    .badge-operator {
+      background: rgba(22, 163, 74, 0.94);
+    }
+
+    .badge-operator .icon {
+      width: 0.95em;
+      height: 0.95em;
+    }
+
+
+    /* =========================================================
+       BOTÕES
+       ========================================================= */
+
+    .btn {
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+
+      width: 100%;
+
+      border: 0;
+      border-radius: var(--radius-md);
+
+      cursor: pointer;
+
+      transition:
+        transform 0.12s ease,
+        background 0.15s ease,
+        box-shadow 0.15s ease;
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn .icon {
+      width: 1.15em;
+      height: 1.15em;
+    }
+
 
     /* =========================================================
        GRAVAR
        ========================================================= */
 
     #record-toggle {
-      display: flex;
+      min-height: 60px;
 
-      align-items: center;
-      justify-content: center;
+      padding: 14px 20px;
 
-      width: 100%;
-
-      min-height: 54px;
-
-      padding: 13px 18px;
-
-      border: 0;
-      border-radius: 15px;
-
-      background: #16a34a;
+      background: var(--accent);
       color: #fff;
 
-      font-size: 0.98rem;
+      font-size: 1.02rem;
       font-weight: 800;
+      letter-spacing: -0.01em;
 
       box-shadow:
-        0 6px 18px rgba(0, 0, 0, 0.35);
-
-      cursor: pointer;
-
-      transition:
-        transform 0.12s ease,
-        background 0.15s ease;
+        0 10px 26px rgba(79, 70, 229, 0.35);
     }
 
     #record-toggle:active {
-      transform: scale(0.98);
-      background: #15803d;
+      background: var(--accent-hover);
+    }
+
+    #record-toggle .record-icon-active {
+      display: none;
     }
 
     #record-toggle.recording {
-      background: #dc2626;
+      background: var(--danger);
+
+      box-shadow:
+        0 10px 26px rgba(220, 38, 38, 0.35);
     }
 
     #record-toggle.recording:active {
-      background: #b91c1c;
+      background: var(--danger-hover);
+    }
+
+    #record-toggle.recording .record-icon-idle {
+      display: none;
+    }
+
+    #record-toggle.recording .record-icon-active {
+      display: inline-block;
     }
 
 
@@ -303,13 +318,21 @@
     .side-panel {
       width: 100%;
 
-      padding: 15px 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+
+      padding: 16px 16px 20px;
     }
 
 
     /* =========================================================
        CONFIGURAÇÕES
        ========================================================= */
+
+    .settings-card {
+      padding: 16px;
+    }
 
     #camera-settings {
       display: grid;
@@ -326,17 +349,23 @@
     }
 
     .settings-field label {
-      display: block;
+      display: flex;
+      align-items: center;
+      gap: 6px;
 
-      margin-bottom: 7px;
+      margin-bottom: 8px;
 
-      color: #93c5fd;
+      color: var(--text-secondary);
 
       font-size: 0.72rem;
       font-weight: 800;
 
       letter-spacing: 0.04em;
       text-transform: uppercase;
+    }
+
+    .settings-field label .icon {
+      color: var(--accent);
     }
 
     .settings-field select {
@@ -347,11 +376,11 @@
 
       padding: 0 34px 0 13px;
 
-      border: 1px solid #2d3748;
-      border-radius: 11px;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
 
-      background-color: #151b23;
-      color: #f3f4f6;
+      background-color: #f8fafc;
+      color: var(--text);
 
       font-size: 0.87rem;
       font-weight: 600;
@@ -362,11 +391,11 @@
         linear-gradient(
           45deg,
           transparent 50%,
-          #9ca3af 50%
+          #64748b 50%
         ),
         linear-gradient(
           135deg,
-          #9ca3af 50%,
+          #64748b 50%,
           transparent 50%
         );
 
@@ -379,15 +408,17 @@
         5px 5px;
 
       background-repeat: no-repeat;
+
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
 
     .settings-field select:focus {
       outline: none;
 
-      border-color: #16a34a;
+      border-color: var(--accent);
 
       box-shadow:
-        0 0 0 3px rgba(22, 163, 74, 0.15);
+        0 0 0 3px var(--accent-soft);
     }
 
     .settings-field select:disabled {
@@ -400,33 +431,18 @@
        ========================================================= */
 
     #lance-button {
-      display: block;
-
-      width: 100%;
-
       min-height: 58px;
-
-      margin-top: 14px;
 
       padding: 13px 20px;
 
-      border: 0;
-      border-radius: 15px;
-
-      background: #f59e0b;
-      color: #111827;
+      background: var(--warning);
+      color: var(--warning-ink);
 
       font-size: 1.02rem;
       font-weight: 900;
 
       box-shadow:
-        0 6px 18px rgba(245, 158, 11, 0.18);
-
-      cursor: pointer;
-
-      transition:
-        transform 0.12s ease,
-        background 0.15s ease;
+        0 10px 24px rgba(245, 158, 11, 0.3);
     }
 
     #lance-button[hidden] {
@@ -434,13 +450,12 @@
     }
 
     #lance-button:active {
-      transform: scale(0.98);
-      background: #d97706;
+      background: var(--warning-hover);
     }
 
     #lance-button:disabled {
-      background: #303640;
-      color: #6b7280;
+      background: #e2e8f0;
+      color: var(--text-muted);
 
       box-shadow: none;
 
@@ -452,13 +467,14 @@
        TOASTS
        ========================================================= */
 
-    #lance-toast,
-    #save-toast {
+    .toast {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+
       min-height: 22px;
 
-      margin-top: 7px;
-
-      text-align: center;
+      padding: 0 2px;
 
       font-size: 0.84rem;
       font-weight: 700;
@@ -468,16 +484,19 @@
       transition: opacity 0.25s ease;
     }
 
+    .toast .icon {
+      flex: none;
+    }
+
     #lance-toast {
-      color: #fbbf24;
+      color: var(--warning-hover);
     }
 
     #save-toast {
-      color: #4ade80;
+      color: var(--success);
     }
 
-    #lance-toast.visible,
-    #save-toast.visible {
+    .toast.visible {
       opacity: 1;
     }
 
@@ -487,25 +506,19 @@
        ========================================================= */
 
     details {
-      margin-top: 9px;
-
       overflow: hidden;
-
-      border: 1px solid #202833;
-      border-radius: 11px;
-
-      background: #111720;
     }
 
     summary {
       display: flex;
       align-items: center;
+      gap: 8px;
 
-      min-height: 48px;
+      min-height: 50px;
 
-      padding: 0 13px;
+      padding: 0 14px;
 
-      color: #93c5fd;
+      color: var(--text-secondary);
 
       font-size: 0.86rem;
       font-weight: 700;
@@ -519,31 +532,31 @@
       display: none;
     }
 
-    summary::after {
-      content: "⌄";
+    summary .icon-settings {
+      color: var(--accent);
+    }
 
+    summary .icon-chevron {
       margin-left: auto;
-
-      font-size: 1rem;
 
       transition: transform 0.2s ease;
     }
 
-    details[open] summary::after {
+    details[open] summary .icon-chevron {
       transform: rotate(180deg);
     }
 
     #status,
     #stats,
     #save-path {
-      padding-left: 13px;
-      padding-right: 13px;
+      padding-left: 14px;
+      padding-right: 14px;
     }
 
     #status {
-      padding-top: 10px;
+      padding-top: 4px;
 
-      color: #4ade80;
+      color: var(--success);
 
       font-size: 0.82rem;
       font-weight: 700;
@@ -551,9 +564,9 @@
 
     #stats,
     #save-path {
-      margin-top: 5px;
+      margin-top: 6px;
 
-      color: #6b7280;
+      color: var(--text-muted);
 
       font-size: 0.76rem;
 
@@ -561,32 +574,18 @@
     }
 
     #save-path {
-      padding-bottom: 13px;
+      padding-bottom: 14px;
     }
 
 
     /* =========================================================
-       VOLTAR
+       VOLTAR (base em theme.css, só centraliza aqui)
        ========================================================= */
 
     a.back-link {
-      display: flex;
-      align-items: center;
-
-      min-height: 42px;
-
+      justify-content: center;
+      min-height: 44px;
       margin-top: 4px;
-
-      color: #93c5fd;
-
-      font-size: 0.87rem;
-      font-weight: 600;
-
-      text-decoration: none;
-    }
-
-    a.back-link:active {
-      opacity: 0.65;
     }
 
 
@@ -637,7 +636,7 @@
       }
 
       #record-toggle {
-        min-height: 50px;
+        min-height: 54px;
       }
     }
 
@@ -653,14 +652,6 @@
     ) {
 
       .app {
-        display: grid;
-
-        grid-template-columns:
-          minmax(0, 1fr)
-          minmax(240px, 34%);
-
-        gap: 12px;
-
         min-height: 100dvh;
 
         padding:
@@ -670,12 +661,28 @@
           max(8px, env(safe-area-inset-left));
       }
 
+      .topbar {
+        padding: 2px 4px 8px;
+      }
+
+      .app-body {
+        display: grid;
+
+        grid-template-columns:
+          minmax(0, 1fr)
+          minmax(240px, 34%);
+
+        gap: 12px;
+      }
+
       #video-wrap {
+        margin: 0;
+
         height: calc(
           100dvh
           - env(safe-area-inset-top)
           - env(safe-area-inset-bottom)
-          - 16px
+          - 46px
         );
 
         aspect-ratio: auto;
@@ -697,7 +704,7 @@
       }
 
       #record-toggle {
-        min-height: 50px;
+        min-height: 52px;
       }
     }
 
@@ -707,10 +714,6 @@
        ========================================================= */
 
     @media (min-width: 600px) {
-
-      body {
-        background: #080b10;
-      }
 
       .app {
         max-width: 900px;
@@ -724,15 +727,21 @@
           max(20px, env(safe-area-inset-left));
       }
 
+      .topbar {
+        padding: 0 2px 14px;
+      }
+
       #video-wrap {
+        margin: 0;
+
         aspect-ratio: 16 / 10;
 
-        border-radius: 18px;
+        border-radius: var(--radius-lg);
       }
 
       .side-panel {
         padding:
-          18px
+          16px
           0
           0;
       }
@@ -750,25 +759,24 @@
     @media (min-width: 900px) {
 
       .app {
-        max-width: 1100px;
+        max-width: 1140px;
+      }
 
+      .app-body {
         display: grid;
 
         grid-template-columns:
           minmax(0, 1fr)
-          320px;
+          340px;
 
         align-items: start;
 
-        gap: 20px;
-
-        padding: 24px;
+        gap: 22px;
       }
 
       #video-wrap {
         aspect-ratio: 16 / 10;
-
-        border-radius: 18px;
+        border-radius: var(--radius-lg);
       }
 
       .side-panel {
@@ -779,30 +787,6 @@
         grid-template-columns: 1fr;
       }
     }
-
-
-    /* =========================================================
-       ACESSIBILIDADE
-       ========================================================= */
-
-    @media (prefers-reduced-motion: reduce) {
-
-      *,
-      *::before,
-      *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-      }
-    }
-
-    button:focus-visible,
-    select:focus-visible,
-    a:focus-visible,
-    summary:focus-visible {
-      outline: 2px solid #60a5fa;
-      outline-offset: 3px;
-    }
   </style>
 </head>
 
@@ -811,155 +795,191 @@
   <main class="app">
 
     <!-- =====================================================
-         CÂMERA
+         MARCA
          ===================================================== -->
 
-    <section id="video-wrap">
-
-      <video
-        id="preview"
-        autoplay
-        playsinline
-        muted
-      ></video>
-
-      <!-- Informações sobre gravação -->
-      <div class="video-top">
-
-        <span id="rec-badge" hidden>
-          <span class="dot"></span>
-
-          gravando ·
-
-          <span id="elapsed">
-            00:00
-          </span>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark">
+          <svg class="icon" viewBox="0 0 24 24"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
         </span>
-
-        <span id="operator-badge" hidden>
-          🎥
-
-          <span id="operator-name"></span>
-        </span>
-
+        ManagerReplay
       </div>
+    </header>
+
+    <div class="app-body">
+
+      <!-- =====================================================
+           CÂMERA
+           ===================================================== -->
+
+      <section id="video-wrap">
+
+        <video
+          id="preview"
+          autoplay
+          playsinline
+          muted
+        ></video>
+
+        <!-- Informações sobre gravação -->
+        <div class="video-top">
+
+          <span id="rec-badge" class="badge badge-rec" hidden>
+            <span class="dot"></span>
+
+            gravando ·
+
+            <span id="elapsed">
+              00:00
+            </span>
+          </span>
+
+          <span id="operator-badge" class="badge badge-operator" hidden>
+            <svg class="icon" viewBox="0 0 24 24"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
+
+            <span id="operator-name"></span>
+          </span>
+
+        </div>
 
 
-      <!-- Botão principal -->
-      <div class="video-bottom">
+        <!-- Botão principal -->
+        <div class="video-bottom">
 
+          <button
+            id="record-toggle"
+            type="button"
+            class="btn"
+          >
+            <svg class="icon icon-fill record-icon-idle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg>
+            <svg class="icon icon-fill record-icon-active" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+
+            <span id="record-toggle-label">Iniciar gravação</span>
+          </button>
+
+        </div>
+
+      </section>
+
+
+      <!-- =====================================================
+           PAINEL DE CONTROLE
+           ===================================================== -->
+
+      <section class="side-panel">
+
+        <div class="card settings-card">
+
+          <div id="camera-settings">
+
+            <!-- Câmera -->
+            <div class="settings-field">
+
+              <label for="camera-device">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+                Câmera
+              </label>
+
+              <select id="camera-device"></select>
+
+            </div>
+
+
+            <!-- Qualidade -->
+            <div class="settings-field">
+
+              <label for="quality-select">
+                <svg class="icon" viewBox="0 0 24 24"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
+                Qualidade
+              </label>
+
+              <select id="quality-select">
+
+                <option value="hd30">
+                  HD · 30fps
+                </option>
+
+                <option value="hd60">
+                  HD · 60fps
+                </option>
+
+                <option value="fhd30">
+                  FHD · 30fps
+                </option>
+
+                <option value="fhd60">
+                  FHD · 60fps
+                </option>
+
+              </select>
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <!-- Lance -->
         <button
-          id="record-toggle"
+          id="lance-button"
           type="button"
+          class="btn"
+          hidden
         >
-          ● Iniciar gravação
+          <svg class="icon icon-fill" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg>
+
+          <span id="lance-button-label">Lance</span>
         </button>
 
-      </div>
 
-    </section>
+        <!-- Mensagens -->
+        <div id="lance-toast" class="toast"></div>
 
-
-    <!-- =====================================================
-         PAINEL DE CONTROLE
-         ===================================================== -->
-
-    <section class="side-panel">
-
-      <div id="camera-settings">
-
-        <!-- Câmera -->
-        <div class="settings-field">
-
-          <label for="camera-device">
-            📷 Câmera
-          </label>
-
-          <select id="camera-device"></select>
-
+        <div id="save-toast" class="toast">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+          <span id="save-toast-label"></span>
         </div>
 
 
-        <!-- Qualidade -->
-        <div class="settings-field">
+        <!-- Detalhes -->
+        <details class="card">
 
-          <label for="quality-select">
-            🎞️ Qualidade
-          </label>
+          <summary>
+            <svg class="icon icon-settings" viewBox="0 0 24 24"><path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/><path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/></svg>
+            Detalhes técnicos
+            <svg class="icon icon-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+          </summary>
 
-          <select id="quality-select">
+          <div id="status">
+            iniciando...
+          </div>
 
-            <option value="hd30">
-              HD · 30fps
-            </option>
+          <div id="stats"></div>
 
-            <option value="hd60">
-              HD · 60fps
-            </option>
+          <div id="save-path"></div>
 
-            <option value="fhd30">
-              FHD · 30fps
-            </option>
-
-            <option value="fhd60">
-              FHD · 60fps
-            </option>
-
-          </select>
-
-        </div>
-
-      </div>
+        </details>
 
 
-      <!-- Lance -->
-      <button
-        id="lance-button"
-        type="button"
-        hidden
-      >
-        ⚡ Lance
-      </button>
+        <!-- Retorno -->
+        <a
+          class="back-link"
+          href="cameras.html"
+        >
+          <svg class="icon" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+          Voltar ao menu
+        </a>
 
+      </section>
 
-      <!-- Mensagens -->
-      <div id="lance-toast"></div>
-
-      <div id="save-toast"></div>
-
-
-      <!-- Detalhes -->
-      <details>
-
-        <summary>
-          ⚙ Detalhes técnicos
-        </summary>
-
-        <div id="status">
-          iniciando...
-        </div>
-
-        <div id="stats"></div>
-
-        <div id="save-path"></div>
-
-      </details>
-
-
-      <!-- Retorno -->
-      <a
-        class="back-link"
-        href="cameras.html"
-      >
-        ← Voltar ao menu
-      </a>
-
-    </section>
+    </div>
 
   </main>
 
 
-  <script src="client.js?v=15"></script>
+  <script src="client.js?v=16"></script>
 
 </body>
 </html>

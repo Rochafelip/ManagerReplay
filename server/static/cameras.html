@@ -6,46 +6,40 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="icons/icon-32.png" sizes="32x32" type="image/png" />
   <link rel="apple-touch-icon" href="icons/icon-180.png" />
-  <meta name="theme-color" content="#0b0f14" />
+  <meta name="theme-color" content="#f1f5f9" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>ManagerReplay</title>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>ManagerReplay — Câmeras</title>
+  <link rel="stylesheet" href="theme.css" />
   <style>
-    * { box-sizing: border-box; }
-    html { min-height: 100%; background: #0b0f14; color-scheme: dark; }
-    body {
-      min-height: 100dvh;
-      margin: 0;
-      padding: max(22px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) 18px max(18px, env(safe-area-inset-left));
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background: #0b0f14;
-      color: #f3f4f6;
-      -webkit-font-smoothing: antialiased;
-      -webkit-tap-highlight-color: transparent;
-    }
-    h1 { font-size: 1.3rem; font-weight: 800; margin: 0 0 4px; letter-spacing: -0.01em; }
-    .subtitle { color: #6b7280; font-size: 0.85rem; margin: 0 0 24px; }
     label {
-      display: block;
+      display: flex;
+      align-items: center;
+      gap: 6px;
       font-size: 0.72rem;
       font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 0.06em;
-      color: #93c5fd;
+      color: var(--text-secondary);
       margin-bottom: 8px;
     }
+    label .icon { color: var(--accent); }
+
     #name-input {
       display: block;
       width: 100%;
       padding: 14px 15px;
       font-size: 1.05rem;
       font-weight: 600;
-      background: #111720;
-      border: 1px solid #202833;
-      color: #f3f4f6;
-      border-radius: 12px;
+      background: var(--card-bg);
+      border: 1px solid var(--border-strong);
+      color: var(--text);
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-sm);
     }
-    #name-input:focus { outline: none; border-color: #16a34a; box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15); }
+    #name-input::placeholder { color: var(--text-muted); font-weight: 500; }
+    #name-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
     #camera-step {
       margin-top: 0;
       opacity: 0;
@@ -53,36 +47,97 @@
       overflow: hidden;
       transition: opacity 0.25s ease;
     }
-    #camera-step.visible { margin-top: 26px; opacity: 1; max-height: 300px; }
+    #camera-step.visible { margin-top: 26px; opacity: 1; max-height: 320px; }
+
     a.camera-link {
       display: flex;
       align-items: center;
-      justify-content: center;
-      gap: 10px;
-      padding: 15px 16px;
+      gap: 12px;
+      padding: 16px 18px;
       margin-bottom: 10px;
-      background: #16a34a;
-      color: #fff;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
       text-decoration: none;
-      border-radius: 14px;
-      font-size: 1.02rem;
-      font-weight: 700;
-      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.12s ease, border-color 0.15s ease;
     }
-    a.camera-link:active { background: #15803d; }
+    a.camera-link:active { transform: scale(0.99); }
+    .camera-link-icon {
+      flex: 0 0 auto;
+      width: 42px;
+      height: 42px;
+      border-radius: 11px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .camera-link-body { min-width: 0; }
+    .camera-link-title { font-size: 1rem; font-weight: 800; }
+    .camera-link-sub { font-size: 0.78rem; color: var(--text-secondary); margin-top: 2px; }
+    .camera-link-chevron { margin-left: auto; color: var(--text-muted); flex: 0 0 auto; }
   </style>
 </head>
 <body>
-  <h1>ManagerReplay</h1>
-  <p class="subtitle">Quem vai gravar?</p>
+  <div class="page">
 
-  <label for="name-input">Seu nome</label>
-  <input id="name-input" type="text" placeholder="Ex: Carlos" autocomplete="off" />
+    <header class="topbar">
+      <a class="brand" href="index.html">
+        <span class="brand-mark">
+          <svg class="icon" viewBox="0 0 24 24"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
+        </span>
+        ManagerReplay
+      </a>
+    </header>
 
-  <div id="camera-step">
-    <label>Qual câmera você vai usar?</label>
-    <a class="camera-link" id="camera-1-link" href="#">📹 Câmera 1 — Traseira</a>
-    <a class="camera-link" id="camera-2-link" href="#">📹 Câmera 2 — Frontal</a>
+    <h1 class="page-title">Quem vai gravar?</h1>
+    <p class="subtitle">Informe seu nome pra liberar a escolha de câmera.</p>
+
+    <label for="name-input">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Seu nome
+    </label>
+    <input id="name-input" type="text" placeholder="Ex: Carlos" autocomplete="off" />
+
+    <div id="camera-step">
+      <label>
+        <svg class="icon" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+        Qual câmera você vai usar?
+      </label>
+      <a class="camera-link" id="camera-1-link" href="#">
+        <span class="camera-link-icon">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+        </span>
+        <span class="camera-link-body">
+          <span class="camera-link-title">Câmera 1</span>
+          <span class="camera-link-sub">Traseira</span>
+        </span>
+        <span class="camera-link-chevron">
+          <svg class="icon" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+        </span>
+      </a>
+      <a class="camera-link" id="camera-2-link" href="#">
+        <span class="camera-link-icon">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+        </span>
+        <span class="camera-link-body">
+          <span class="camera-link-title">Câmera 2</span>
+          <span class="camera-link-sub">Frontal</span>
+        </span>
+        <span class="camera-link-chevron">
+          <svg class="icon" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+        </span>
+      </a>
+    </div>
+
+    <a class="back-link" href="index.html">
+      <svg class="icon" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+      Voltar ao menu
+    </a>
+
   </div>
 
   <script>

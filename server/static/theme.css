@@ -1,0 +1,251 @@
+/* =========================================================
+   MANAGERREPLAY — TEMA COMPARTILHADO
+   ========================================================= */
+
+:root {
+  --bg: #f1f5f9;
+  --card-bg: #ffffff;
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+
+  --text: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+
+  --accent: #4f46e5;
+  --accent-hover: #4338ca;
+  --accent-soft: #eef2ff;
+
+  --danger: #dc2626;
+  --danger-hover: #b91c1c;
+  --danger-soft: #fee2e2;
+
+  --success: #16a34a;
+  --success-hover: #15803d;
+  --success-soft: #dcfce7;
+
+  --warning: #f59e0b;
+  --warning-hover: #d97706;
+  --warning-ink: #78350f;
+  --warning-soft: #fef3c7;
+
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 8px 24px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 16px 40px rgba(15, 23, 42, 0.12);
+}
+
+
+/* =========================================================
+   RESET
+   ========================================================= */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  background: var(--bg);
+  color-scheme: light;
+}
+
+body {
+  min-height: 100dvh;
+
+  margin: 0;
+
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+
+  background: var(--bg);
+  color: var(--text);
+
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+select,
+input {
+  font: inherit;
+  touch-action: manipulation;
+}
+
+/* Wrapper used by the simple content pages (index, cameras, files, gravando, monitor).
+   capture.html builds its own full-bleed layout via .app instead. */
+.page {
+  padding:
+    max(20px, env(safe-area-inset-top))
+    max(18px, env(safe-area-inset-right))
+    24px
+    max(18px, env(safe-area-inset-left));
+}
+
+@media (min-width: 640px) {
+  .page {
+    max-width: 640px;
+    margin: 0 auto;
+  }
+}
+
+
+/* =========================================================
+   ÍCONES
+   ========================================================= */
+
+.icon {
+  display: inline-block;
+  flex: none;
+
+  width: 1em;
+  height: 1em;
+
+  vertical-align: -0.15em;
+
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.icon-fill {
+  fill: currentColor;
+  stroke: none;
+}
+
+
+/* =========================================================
+   TOPBAR / MARCA
+   ========================================================= */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  margin-bottom: 18px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+
+  color: var(--text);
+
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+
+  text-decoration: none;
+}
+
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 30px;
+  height: 30px;
+
+  border-radius: 9px;
+
+  background: var(--accent);
+  color: #fff;
+
+  font-size: 1rem;
+}
+
+.page-title {
+  font-size: 1.28rem;
+  font-weight: 800;
+  margin: 0 0 4px;
+  letter-spacing: -0.01em;
+}
+
+.page-title .icon {
+  color: var(--accent);
+  margin-right: 4px;
+}
+
+.subtitle {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin: 0 0 22px;
+  line-height: 1.4;
+}
+
+
+/* =========================================================
+   CARD
+   ========================================================= */
+
+.card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+
+  background: var(--card-bg);
+  box-shadow: var(--shadow-sm);
+}
+
+
+/* =========================================================
+   VOLTAR
+   ========================================================= */
+
+a.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  margin-top: 1.5em;
+
+  color: var(--text-secondary);
+
+  font-size: 0.87rem;
+  font-weight: 700;
+
+  text-decoration: none;
+}
+
+a.back-link:active {
+  opacity: 0.65;
+}
+
+
+/* =========================================================
+   ACESSIBILIDADE
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+button:focus-visible,
+select:focus-visible,
+input:focus-visible,
+a:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}

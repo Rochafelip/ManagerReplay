@@ -23,11 +23,14 @@ let statsTimer = null;
 
 const LANCE_MIN_MS = 30000;
 const lanceButtonEl = document.getElementById("lance-button");
+const lanceButtonLabelEl = document.getElementById("lance-button-label");
 const recordToggleEl = document.getElementById("record-toggle");
+const recordToggleLabelEl = document.getElementById("record-toggle-label");
 const recBadgeEl = document.getElementById("rec-badge");
 const deviceSelectEl = document.getElementById("camera-device");
 const qualitySelectEl = document.getElementById("quality-select");
 const saveToastEl = document.getElementById("save-toast");
+const saveToastLabelEl = document.getElementById("save-toast-label");
 
 const QUALITY_PRESETS = {
   hd30: { width: 1280, height: 720, frameRate: 30 },
@@ -61,11 +64,11 @@ function updateStats() {
   if (elapsedMs >= LANCE_MIN_MS) {
     if (lanceButtonEl.disabled) {
       lanceButtonEl.disabled = false;
-      lanceButtonEl.textContent = "⚡ Lance";
+      lanceButtonLabelEl.textContent = "Lance";
     }
   } else {
     const remaining = Math.ceil((LANCE_MIN_MS - elapsedMs) / 1000);
-    lanceButtonEl.textContent = `⚡ Lance em ${remaining}s`;
+    lanceButtonLabelEl.textContent = `Lance em ${remaining}s`;
   }
 }
 
@@ -188,17 +191,17 @@ function beginRecording() {
 
   qualitySelectEl.disabled = true;
   recBadgeEl.hidden = false;
-  recordToggleEl.textContent = "■ Parar gravação";
+  recordToggleLabelEl.textContent = "Parar gravação";
   recordToggleEl.classList.add("recording");
   lanceButtonEl.hidden = false;
   lanceButtonEl.disabled = true;
-  lanceButtonEl.textContent = "⚡ Lance em 30s";
+  lanceButtonLabelEl.textContent = "Lance em 30s";
   statsTimer = setInterval(updateStats, 1000);
   updateStats();
 }
 
 function showSavedToast() {
-  saveToastEl.textContent = "✅ Gravação salva no app";
+  saveToastLabelEl.textContent = "Gravação salva no app";
   saveToastEl.classList.add("visible");
   setTimeout(() => saveToastEl.classList.remove("visible"), 3000);
 }
@@ -218,7 +221,7 @@ async function endRecording() {
   recBadgeEl.hidden = true;
   deviceSelectEl.disabled = false;
   lanceButtonEl.hidden = true;
-  recordToggleEl.textContent = "● Iniciar gravação";
+  recordToggleLabelEl.textContent = "Iniciar gravação";
   recordToggleEl.classList.remove("recording");
   recordToggleEl.disabled = false;
   statusEl.textContent = "pronto pra gravar";
