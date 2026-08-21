@@ -1,0 +1,17 @@
+[Unit]
+Description=ManagerReplay server
+After=network.target
+
+[Service]
+Type=simple
+User=rocha
+WorkingDirectory=/home/rocha/managerreplay/server
+ExecStart=/home/rocha/managerreplay/server/.venv/bin/python app.py \
+  --mode=chunks --cameras=1 \
+  --cert /home/rocha/managerreplay/certs/10.42.0.1.pem \
+  --key /home/rocha/managerreplay/certs/10.42.0.1-key.pem
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

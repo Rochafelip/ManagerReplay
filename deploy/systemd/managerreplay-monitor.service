@@ -1,0 +1,14 @@
+[Unit]
+Description=ManagerReplay Pi health monitor (CPU/RAM/temperature)
+After=network.target
+
+[Service]
+Type=simple
+User=rocha
+WorkingDirectory=/home/rocha/managerreplay/monitor
+ExecStart=/home/rocha/managerreplay/monitor/monitor.sh
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

@@ -77,6 +77,20 @@ Layout esperado na Pi, tudo sob `~/managerreplay/`:
 
 `--storage-root` e `--events-file` já usam `~/managerreplay/data/...` por padrão — só precisam ser passados se quiser outro local.
 
+## Autostart no boot (systemd) — jogo sem SSH
+
+Pra usar num campo/quadra sem levar notebook: a Pi precisa subir o hotspot, o servidor e o monitor sozinha ao ligar. O hotspot Wi-Fi já sobe sozinho por conta do NetworkManager (`nmcli connection modify <ssid> autoconnect yes`, feito uma vez na configuração inicial). Servidor e monitor sobem via systemd:
+
+```bash
+sudo cp deploy/systemd/managerreplay-server.service deploy/systemd/managerreplay-monitor.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now managerreplay-server managerreplay-monitor
+```
+
+Os arquivos `.service` já estão prontos em [`deploy/systemd/`](deploy/systemd/) — ajuste o caminho do certificado dentro de `managerreplay-server.service` se o IP do hotspot for diferente de `10.42.0.1`. `Restart=always` garante que se algum dos dois cair, ele volta sozinho.
+
+**Desligando sem tela/teclado (puxando a energia direto)**: o `monitor.csv` é escrito no `/dev/shm` (RAM, tmpfs) por padrão — não fica no cartão SD, então puxar a energia nunca corrompe esse arquivo. As gravações de vídeo continuam no cartão SD normalmente; no pior caso, só o pedaço de ~30s que estava sendo gravado no exato momento de tirar a energia pode ficar incompleto — o resto da gravação (chunks anteriores, já com escrita concluída) fica intacto.
+
 ## Instalando o certificado nos celulares
 
 Como o certificado é autoassinado (rede 100% offline, sem CA pública), cada celular precisa confiar no certificado raiz do mkcert uma vez. O app facilita isso: o menu inicial tem um link **"📜 Instalar certificado"** que baixa o `rootCA.pem` direto do Pi — depois é só instalar como certificado de CA confiável nas configurações do Android (ou perfil confiável no iPhone).

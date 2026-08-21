@@ -16,7 +16,11 @@ def parse_args():
     parser.add_argument("--key", required=True, help="Path to mkcert-generated key file")
     parser.add_argument("--storage-root", default="~/managerreplay/data/recordings")
     parser.add_argument("--events-file", default="~/managerreplay/data/events.jsonl")
-    parser.add_argument("--monitor-csv", default="~/managerreplay/monitor/monitor.csv")
+    parser.add_argument(
+        "--monitor-csv",
+        default="/dev/shm/managerreplay-monitor.csv",
+        help="Lives on tmpfs by default so pulling the Pi's power doesn't corrupt the SD card",
+    )
     parser.add_argument("--static-dir", default=str(Path(__file__).parent / "static"))
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8443)
