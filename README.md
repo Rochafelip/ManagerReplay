@@ -53,8 +53,7 @@ Layout esperado na Pi, tudo sob `~/managerreplay/`:
 ├── data/
 │   ├── recordings/       vídeos gravados (recordings/camera-N/...)
 │   └── events.jsonl      lances registrados
-├── certs/         certificado HTTPS (leaf cert + key do mkcert)
-└── monitor/        script de monitoramento de CPU/RAM/temperatura da Pi
+└── certs/         certificado HTTPS (leaf cert + key do mkcert)
 ```
 
 1. **Sincronizar o código**:
@@ -67,29 +66,28 @@ Layout esperado na Pi, tudo sob `~/managerreplay/`:
    mkdir -p ~/managerreplay/certs && cd ~/managerreplay/certs
    mkcert <ip-do-hotspot>   # ex: mkcert 10.42.0.1
    ```
-3. **Subir o servidor**:
+3. **Subir o servidor** — via systemd (ver seção abaixo, recomendado) ou manualmente pra testar:
    ```bash
    cd ~/managerreplay/server
-   nohup .venv/bin/python app.py --mode=chunks --cameras=1 \
-     --cert ~/managerreplay/certs/<ip>.pem --key ~/managerreplay/certs/<ip>-key.pem \
-     > ~/managerreplay/monitor/server.log 2>&1 &
+   .venv/bin/python app.py --mode=chunks --cameras=1 \
+     --cert ~/managerreplay/certs/<ip>.pem --key ~/managerreplay/certs/<ip>-key.pem
    ```
 
 `--storage-root` e `--events-file` já usam `~/managerreplay/data/...` por padrão — só precisam ser passados se quiser outro local.
 
 ## Autostart no boot (systemd) — jogo sem SSH
 
-Pra usar num campo/quadra sem levar notebook: a Pi precisa subir o hotspot, o servidor e o monitor sozinha ao ligar. O hotspot Wi-Fi já sobe sozinho por conta do NetworkManager (`nmcli connection modify <ssid> autoconnect yes`, feito uma vez na configuração inicial). Servidor e monitor sobem via systemd:
+Pra usar num campo/quadra sem levar notebook: a Pi precisa subir o hotspot e o servidor sozinha ao ligar. O hotspot Wi-Fi já sobe sozinho por conta do NetworkManager (`nmcli connection modify <ssid> autoconnect yes`, feito uma vez na configuração inicial). O servidor sobe via systemd:
 
 ```bash
-sudo cp deploy/systemd/managerreplay-server.service deploy/systemd/managerreplay-monitor.service /etc/systemd/system/
+sudo cp deploy/systemd/managerreplay-server.service /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable --now managerreplay-server managerreplay-monitor
+sudo systemctl enable --now managerreplay-server
 ```
 
-Os arquivos `.service` já estão prontos em [`deploy/systemd/`](deploy/systemd/) — ajuste o caminho do certificado dentro de `managerreplay-server.service` se o IP do hotspot for diferente de `10.42.0.1`. `Restart=always` garante que se algum dos dois cair, ele volta sozinho.
+O arquivo `.service` já está pronto em [`deploy/systemd/`](deploy/systemd/) — ajuste o caminho do certificado dentro dele se o IP do hotspot for diferente de `10.42.0.1`. `Restart=always` garante que se ele cair, volta sozinho.
 
-**Desligando sem tela/teclado (puxando a energia direto)**: o `monitor.csv` é escrito no `/dev/shm` (RAM, tmpfs) por padrão — não fica no cartão SD, então puxar a energia nunca corrompe esse arquivo. As gravações de vídeo continuam no cartão SD normalmente; no pior caso, só o pedaço de ~30s que estava sendo gravado no exato momento de tirar a energia pode ficar incompleto — o resto da gravação (chunks anteriores, já com escrita concluída) fica intacto.
+**Desligando sem tela/teclado (puxando a energia direto)**: a tela de Monitor mede CPU/RAM/temperatura na hora (via `top`/`free`/`vcgencmd`), sob demanda, quando alguém abre a tela e aperta "Atualizar" — não existe processo escrevendo continuamente no cartão SD, então não há nada pra corromper com uma queda de energia. As gravações de vídeo continuam no cartão SD normalmente; no pior caso, só o pedaço de ~30s que estava sendo gravado no exato momento de tirar a energia pode ficar incompleto — o resto da gravação (chunks anteriores, já com escrita concluída) fica intacto.
 
 ## Instalando o certificado nos celulares
 

@@ -9,7 +9,7 @@ from urllib.parse import parse_qs, urlparse
 
 from server.events import record_event
 from server.file_listing import list_directory
-from server.monitor_status import get_disk_usage, read_latest_status
+from server.monitor_status import get_disk_usage, read_live_status
 from server.sessions import list_sessions, record_chunk, start_session, stop_session
 from server.storage import build_day_dir, save_chunk
 
@@ -18,7 +18,6 @@ class ChunksUploadHandler(SimpleHTTPRequestHandler):
     storage_root: Path = None
     n_cameras: int = 1
     events_file: Path = None
-    monitor_csv: Path = None
     sessions_registry: dict = None
     sessions_lock: threading.Lock = None
 
@@ -75,9 +74,9 @@ class ChunksUploadHandler(SimpleHTTPRequestHandler):
 
     def _handle_monitor_status(self):
         try:
-            status = read_latest_status(self.monitor_csv)
-        except (ValueError, FileNotFoundError) as err:
-            self.send_response(404)
+            status = read_live_status()
+        except (OSError, ValueError) as err:
+            self.send_response(503)
             self.end_headers()
             self.wfile.write(str(err).encode("utf-8"))
             return
@@ -183,14 +182,12 @@ def build_server(
     cert_path: Path,
     key_path: Path,
     events_file: Path,
-    monitor_csv: Path,
     host: str = "0.0.0.0",
     port: int = 8443,
 ) -> ThreadingHTTPServer:
     ChunksUploadHandler.storage_root = storage_root
     ChunksUploadHandler.n_cameras = n_cameras
     ChunksUploadHandler.events_file = events_file
-    ChunksUploadHandler.monitor_csv = monitor_csv
     ChunksUploadHandler.sessions_registry = {}
     ChunksUploadHandler.sessions_lock = threading.Lock()
     handler = partial(ChunksUploadHandler, directory=str(static_dir))
@@ -209,13 +206,12 @@ def run(
     cert_path: Path,
     key_path: Path,
     events_file: Path,
-    monitor_csv: Path,
     host: str = "0.0.0.0",
     port: int = 8443,
 ):
     storage_root.mkdir(parents=True, exist_ok=True)
     server = build_server(
-        storage_root, n_cameras, static_dir, cert_path, key_path, events_file, monitor_csv, host, port
+        storage_root, n_cameras, static_dir, cert_path, key_path, events_file, host, port
     )
     print(f"[chunks] listening on https://{host}:{port}, storage={storage_root}")
     server.serve_forever()

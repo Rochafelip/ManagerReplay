@@ -7,7 +7,7 @@ from aiortc.contrib.media import MediaRecorder
 
 from server.events import record_event
 from server.file_listing import list_directory
-from server.monitor_status import get_disk_usage, read_latest_status
+from server.monitor_status import get_disk_usage, read_live_status
 from server.storage import build_camera_dir
 
 _active_connections: set[RTCPeerConnection] = set()
@@ -65,12 +65,11 @@ async def _handle_files_list(request: web.Request) -> web.Response:
 
 
 async def _handle_monitor_status(request: web.Request) -> web.Response:
-    monitor_csv: Path = request.app["monitor_csv"]
     storage_root: Path = request.app["storage_root"]
     try:
-        status = read_latest_status(monitor_csv)
-    except (ValueError, FileNotFoundError) as err:
-        return web.Response(status=404, text=str(err))
+        status = read_live_status()
+    except (OSError, ValueError) as err:
+        return web.Response(status=503, text=str(err))
     status.update(get_disk_usage(storage_root))
     return web.json_response(status)
 
@@ -88,7 +87,6 @@ def run(
     cert_path: Path,
     key_path: Path,
     events_file: Path,
-    monitor_csv: Path,
     host: str = "0.0.0.0",
     port: int = 8443,
 ):
@@ -98,7 +96,6 @@ def run(
     app["storage_root"] = storage_root
     app["n_cameras"] = n_cameras
     app["events_file"] = events_file
-    app["monitor_csv"] = monitor_csv
     app.router.add_post("/offer/{camera_id}", _handle_offer)
     app.router.add_post("/events", _handle_event)
     app.router.add_get("/files-list", _handle_files_list)

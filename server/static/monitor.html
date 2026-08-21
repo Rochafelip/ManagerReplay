@@ -69,13 +69,26 @@
       color: #93c5fd;
       text-decoration: none;
     }
+    #refresh-button {
+      width: 100%;
+      margin-top: 1em;
+      padding: 0.9em;
+      font-size: 1em;
+      font-weight: 700;
+      border: none;
+      border-radius: 10px;
+      background: #2563eb;
+      color: #fff;
+    }
+    #refresh-button:disabled { opacity: 0.6; }
   </style>
 </head>
 <body>
   <h1>📊 Monitor da Pi</h1>
-  <p class="subtitle">CPU, memória e temperatura em tempo real (atualiza a cada 3s)</p>
+  <p class="subtitle">CPU, memória e temperatura medidas na hora — sem nada rodando em background</p>
 
-  <div id="content"></div>
+  <div id="content"><p class="subtitle">Medindo...</p></div>
+  <button id="refresh-button" type="button">🔄 Atualizar</button>
   <div id="last-updated"></div>
   <a class="back-link" href="index.html">&larr; voltar ao menu</a>
 
@@ -142,19 +155,26 @@
       lastUpdatedEl.textContent = `Última leitura: ${status.timestamp}`;
     }
 
-    async function poll() {
+    const refreshButtonEl = document.getElementById("refresh-button");
+
+    async function measure() {
+      refreshButtonEl.disabled = true;
+      refreshButtonEl.textContent = "Medindo...";
       try {
         const response = await fetch("/monitor-status");
-        if (!response.ok) throw new Error("monitor.csv ainda não existe na Pi");
+        if (!response.ok) throw new Error("não foi possível medir agora");
         const status = await response.json();
         render(status);
       } catch (err) {
         contentEl.innerHTML = `<div id="error-banner">Não foi possível ler o status: ${err.message}</div>`;
+      } finally {
+        refreshButtonEl.disabled = false;
+        refreshButtonEl.textContent = "🔄 Atualizar";
       }
     }
 
-    poll();
-    setInterval(poll, 3000);
+    refreshButtonEl.addEventListener("click", measure);
+    measure();
   </script>
 </body>
 </html>

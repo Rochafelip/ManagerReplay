@@ -5,6 +5,7 @@ import subprocess
 import threading
 import time
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -32,7 +33,6 @@ def _start_server(tmp_path, cert_path, key_path, storage_root=None):
     static_dir = tmp_path / "static"
     static_dir.mkdir(exist_ok=True)
     events_file = tmp_path / "events.jsonl"
-    monitor_csv = tmp_path / "monitor.csv"
 
     server = chunks_receiver.build_server(
         storage_root=storage_root,
@@ -41,7 +41,6 @@ def _start_server(tmp_path, cert_path, key_path, storage_root=None):
         cert_path=cert_path,
         key_path=key_path,
         events_file=events_file,
-        monitor_csv=monitor_csv,
         host="127.0.0.1",
         port=0,
     )
@@ -230,27 +229,53 @@ def test_upload_updates_chunk_count_for_active_session(tmp_path: Path, self_sign
         thread.join(timeout=2)
 
 
-def test_monitor_status_route_returns_latest_row(tmp_path: Path, self_signed_cert):
+def test_monitor_status_route_returns_live_reading_plus_disk_usage(tmp_path: Path, self_signed_cert):
     cert_path, key_path = self_signed_cert
-    (tmp_path / "monitor.csv").write_text(
-        "timestamp,cpu_pct,ram_used_mb,ram_total_mb,temp_c,arm_clock_mhz,core_clock_mhz,"
-        "undervoltage_now,freq_capped_now,throttled_now,undervoltage_ever\n"
-        "2026-08-20 18:00:00,8.2,164,955,41.3,700,275,0,0,0,0\n"
-    )
+    fake_status = {
+        "timestamp": "2026-08-20 18:00:00",
+        "cpu_pct": 8.2,
+        "ram_used_mb": 164,
+        "ram_total_mb": 955,
+        "temp_c": 41.3,
+        "arm_clock_mhz": 700,
+        "core_clock_mhz": 275,
+        "undervoltage_now": False,
+        "freq_capped_now": False,
+        "throttled_now": False,
+        "undervoltage_ever": False,
+    }
 
-    server, thread, port = _start_server(tmp_path, cert_path, key_path)
+    with patch("server.chunks_receiver.read_live_status", return_value=fake_status):
+        server, thread, port = _start_server(tmp_path, cert_path, key_path)
+        try:
+            conn = _https_connection(port)
+            conn.request("GET", "/monitor-status")
+            response = conn.getresponse()
+            body = json.loads(response.read())
+        finally:
+            server.shutdown()
+            thread.join(timeout=2)
 
-    try:
-        conn = _https_connection(port)
-        conn.request("GET", "/monitor-status")
-        response = conn.getresponse()
-        body = json.loads(response.read())
-        assert response.status == 200
-        assert body["cpu_pct"] == 8.2
-        assert body["temp_c"] == 41.3
-        assert body["undervoltage_now"] is False
-        assert body["disk_total_mb"] > 0
-        assert body["disk_used_mb"] >= 0
-    finally:
-        server.shutdown()
-        thread.join(timeout=2)
+    assert response.status == 200
+    assert body["cpu_pct"] == 8.2
+    assert body["temp_c"] == 41.3
+    assert body["undervoltage_now"] is False
+    assert body["disk_total_mb"] > 0
+    assert body["disk_used_mb"] >= 0
+
+
+def test_monitor_status_route_returns_503_when_measurement_fails(tmp_path: Path, self_signed_cert):
+    cert_path, key_path = self_signed_cert
+
+    with patch("server.chunks_receiver.read_live_status", side_effect=FileNotFoundError("vcgencmd not found")):
+        server, thread, port = _start_server(tmp_path, cert_path, key_path)
+        try:
+            conn = _https_connection(port)
+            conn.request("GET", "/monitor-status")
+            response = conn.getresponse()
+            response.read()
+        finally:
+            server.shutdown()
+            thread.join(timeout=2)
+
+    assert response.status == 503
