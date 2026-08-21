@@ -150,7 +150,7 @@ O seletor de qualidade em `capture.html` detecta as resoluções que a câmera d
 
 Na hora de efetivamente pedir a câmera, o código tenta primeiro `frameRate: { min: X }` (exigência forte — falha com `OverconstrainedError` se o aparelho não aguentar) e só cai pro `frameRate: { ideal: X }` (sugestão fraca, nunca falha) se isso não funcionar — ver `requestVideoStream()` em `client.js`. Mesmo assim, em alguns aparelhos (S20 FE incluso) **60fps nunca é entregue via navegador em nenhuma resolução**, mesmo forçando `min`. A causa mais provável: muitos fabricantes Android (Samsung entre eles) só expõem taxas de quadro altas através de uma sessão de captura especial do Camera2 (`CameraConstrainedHighSpeedCaptureSession`), que fica reservada pro app de câmera nativo/vendor — o Chrome (e navegadores em geral) só abre uma sessão de captura "normal", que nesses aparelhos tem teto de 30fps independente do que for pedido.
 
-A tela de gravação assume essa realidade e só **avisa** quando o fps pedido não bate com o entregue (linha "Câmera ativa" em Detalhes técnicos), em vez de fingir que deu certo — ver `updateCameraInfo()` em `client.js`.
+A tela de gravação assume essa realidade e só **avisa** quando o fps pedido não bate com o entregue (linha "Câmera ativa" em Detalhes técnicos), em vez de fingir que deu certo — ver `updateCameraInfo()` em `client.js`. Por causa disso, a qualidade padrão pré-selecionada é **HD·30fps** (não 60fps) — 60fps continua disponível no seletor pra quem quiser tentar num aparelho que realmente suporte, só não é mais a aposta padrão (`DEFAULT_QUALITY_PRIORITY` em `client.js`).
 
 **Se um futuro desenvolvedor for atrás de 60fps de verdade**, nessa ordem de custo/risco:
 

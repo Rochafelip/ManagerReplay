@@ -56,12 +56,16 @@ const QUALITY_PRESETS = {
 // supportedQualityIds below). 4K only ever shows up when detected.
 const FALLBACK_QUALITY_IDS = ["hd30", "hd60", "fhd30", "fhd60"];
 
-// Preferred order when picking the default: target HD·60fps, only
-// stepping down/up from there if the device can't actually do it.
-const DEFAULT_QUALITY_PRIORITY = ["hd60", "hd30", "fhd60", "fhd30", "uhd60", "uhd30"];
+// Preferred order when picking the default: HD·30fps. 60fps was tried as
+// the default target, but in practice most Android phones tested don't
+// actually deliver it via getUserMedia even when the sensor supports it
+// natively (see the "60fps" section in README) — so default to the fps
+// that's actually reliable, and let people opt into 60fps manually from
+// the quality selector if their phone happens to support it.
+const DEFAULT_QUALITY_PRIORITY = ["hd30", "hd60", "fhd30", "fhd60", "uhd30", "uhd60"];
 
-let quality = params.get("quality") || "hd60";
-if (!QUALITY_PRESETS[quality]) quality = "hd60";
+let quality = params.get("quality") || "hd30";
+if (!QUALITY_PRESETS[quality]) quality = "hd30";
 
 // supportedIds is null while getUserMedia hasn't resolved yet; the actual
 // quality list is only built once we can inspect the camera's real limits.
