@@ -33,15 +33,58 @@ const saveToastEl = document.getElementById("save-toast");
 const saveToastLabelEl = document.getElementById("save-toast-label");
 
 const QUALITY_PRESETS = {
-  hd30: { width: 1280, height: 720, frameRate: 30 },
-  hd60: { width: 1280, height: 720, frameRate: 60 },
-  fhd30: { width: 1920, height: 1080, frameRate: 30 },
-  fhd60: { width: 1920, height: 1080, frameRate: 60 },
+  hd30: { width: 1280, height: 720, frameRate: 30, label: "HD · 30fps" },
+  hd60: { width: 1280, height: 720, frameRate: 60, label: "HD · 60fps" },
+  fhd30: { width: 1920, height: 1080, frameRate: 30, label: "FHD · 30fps" },
+  fhd60: { width: 1920, height: 1080, frameRate: 60, label: "FHD · 60fps" },
+  uhd30: { width: 3840, height: 2160, frameRate: 30, label: "4K · 30fps" },
+  uhd60: { width: 3840, height: 2160, frameRate: 60, label: "4K · 60fps" },
 };
 
-let quality = params.get("quality") || "hd30";
-if (!QUALITY_PRESETS[quality]) quality = "hd30";
-qualitySelectEl.value = quality;
+// Presets known to work broadly (Safari/iOS mostly doesn't expose
+// getCapabilities(), so we can't confirm anything beyond these — see
+// supportedQualityIds below). 4K only ever shows up when detected.
+const FALLBACK_QUALITY_IDS = ["hd30", "hd60", "fhd30", "fhd60"];
+
+// Preferred order when picking the default: target HD·60fps, only
+// stepping down/up from there if the device can't actually do it.
+const DEFAULT_QUALITY_PRIORITY = ["hd60", "hd30", "fhd60", "fhd30", "uhd60", "uhd30"];
+
+let quality = params.get("quality") || "hd60";
+if (!QUALITY_PRESETS[quality]) quality = "hd60";
+
+// supportedIds is null while getUserMedia hasn't resolved yet; the actual
+// quality list is only built once we can inspect the camera's real limits.
+function supportedQualityIds(capabilities) {
+  if (!capabilities || !capabilities.width || !capabilities.height || !capabilities.frameRate) {
+    return FALLBACK_QUALITY_IDS;
+  }
+  const maxWidth = capabilities.width.max || 0;
+  const maxHeight = capabilities.height.max || 0;
+  const maxFrameRate = capabilities.frameRate.max || 0;
+  const supported = Object.keys(QUALITY_PRESETS).filter((id) => {
+    const preset = QUALITY_PRESETS[id];
+    return maxWidth >= preset.width && maxHeight >= preset.height && maxFrameRate >= preset.frameRate - 1;
+  });
+  return supported.length > 0 ? supported : FALLBACK_QUALITY_IDS;
+}
+
+function pickDefaultQuality(supportedIds) {
+  const requested = params.get("quality");
+  if (requested && supportedIds.includes(requested)) return requested;
+  return DEFAULT_QUALITY_PRIORITY.find((id) => supportedIds.includes(id)) || supportedIds[0];
+}
+
+function populateQualitySelect(supportedIds, selectedId) {
+  qualitySelectEl.innerHTML = "";
+  supportedIds.forEach((id) => {
+    const option = document.createElement("option");
+    option.value = id;
+    option.textContent = QUALITY_PRESETS[id].label;
+    if (id === selectedId) option.selected = true;
+    qualitySelectEl.appendChild(option);
+  });
+}
 
 function formatBytes(bytes) {
   if (bytes < 1024) return `${bytes} B`;
@@ -307,11 +350,24 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 
+async function applyDetectedQuality() {
+  const activeTrack = mediaStream.getVideoTracks()[0];
+  const capabilities = activeTrack.getCapabilities ? activeTrack.getCapabilities() : null;
+  const supportedIds = supportedQualityIds(capabilities);
+  const resolvedQuality = pickDefaultQuality(supportedIds);
+  populateQualitySelect(supportedIds, resolvedQuality);
+
+  if (resolvedQuality === quality) return;
+  quality = resolvedQuality;
+  await switchVideoTrack(buildVideoConstraints(activeTrack.getSettings().deviceId), { quality });
+}
+
 async function start() {
   await requestWakeLock();
 
   mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
   document.getElementById("preview").srcObject = mediaStream;
+  await applyDetectedQuality();
   await populateDeviceSelect(mediaStream);
   statusEl.textContent = "pronto pra gravar";
 }
