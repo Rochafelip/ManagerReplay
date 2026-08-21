@@ -4,6 +4,21 @@ Sistema portátil de gravação de partidas esportivas (futebol, vôlei, etc.) q
 
 Contexto completo do produto, decisões de arquitetura e riscos técnicos em [`ContextoProjeto.md`](ContextoProjeto.md).
 
+## Telas
+
+<table>
+  <tr>
+    <td align="center"><img src="imagem/Inicio.png" width="200" alt="Tela Início"><br>Início</td>
+    <td align="center"><img src="imagem/Cameras.png" width="200" alt="Tela Câmeras"><br>Câmeras</td>
+    <td align="center"><img src="imagem/Capture.png" width="200" alt="Tela de gravação"><br>Gravação</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="imagem/Gravando.png" width="200" alt="Tela Quem está gravando"><br>Quem está gravando</td>
+    <td align="center"><img src="imagem/Files.png" width="200" alt="Tela Arquivos"><br>Arquivos</td>
+    <td align="center"><img src="imagem/Monitor.png" width="200" alt="Tela Monitor"><br>Monitor</td>
+  </tr>
+</table>
+
 ## Como funciona
 
 1. A Raspberry Pi liga e sobe sozinha — hotspot Wi-Fi aberto e o app já rodando, sem precisar de SSH nem tela.
