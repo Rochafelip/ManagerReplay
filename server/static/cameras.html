@@ -49,30 +49,19 @@
     }
     #camera-step.visible { margin-top: 26px; opacity: 1; max-height: 600px; }
 
-    a.camera-link {
+    .camera-slot {
       display: flex;
       align-items: center;
       gap: 12px;
-      padding: 16px 18px;
+      padding: 14px 16px;
       margin-bottom: 10px;
       background: var(--card-bg);
       border: 1px solid var(--border);
-      color: var(--text);
-      text-decoration: none;
       border-radius: var(--radius-md);
       box-shadow: var(--shadow-sm);
-      transition: transform 0.12s ease, border-color 0.15s ease;
     }
-    a.camera-link:active { transform: scale(0.99); }
-    a.camera-link.slot-busy {
-      pointer-events: none;
-      opacity: 0.55;
-      background: var(--card-bg-muted, #f1f5f9);
-    }
-    a.camera-link.slot-busy .camera-link-icon {
-      background: #e2e8f0;
-      color: var(--text-muted);
-    }
+    .camera-slot.slot-busy { opacity: 0.55; background: var(--card-bg-muted, #f1f5f9); }
+    .camera-slot.slot-busy .camera-link-icon { background: #e2e8f0; color: var(--text-muted); }
     .camera-link-icon {
       flex: 0 0 auto;
       width: 42px;
@@ -84,9 +73,24 @@
       align-items: center;
       justify-content: center;
     }
-    .camera-link-body { min-width: 0; }
-    .camera-link-title { font-size: 1rem; font-weight: 800; }
-    .camera-link-chevron { margin-left: auto; color: var(--text-muted); flex: 0 0 auto; }
+    .camera-slot-body { min-width: 0; flex: 1; }
+    .camera-link-title { font-size: 1rem; font-weight: 800; margin-bottom: 8px; }
+    .camera-slot-busy-label { font-size: 0.85rem; font-weight: 700; color: var(--text-muted); }
+    .lens-buttons { display: flex; gap: 8px; }
+    a.lens-btn {
+      flex: 1;
+      text-align: center;
+      padding: 9px 10px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.8rem;
+      font-weight: 700;
+      border-radius: var(--radius-sm);
+      transition: transform 0.12s ease;
+    }
+    a.lens-btn:active { transform: scale(0.97); }
+    .camera-slot.slot-busy .lens-buttons { display: none; }
   </style>
 </head>
 <body>
@@ -137,31 +141,38 @@
     const cameraStep = document.getElementById("camera-step");
     const cameraLinksEl = document.getElementById("camera-links");
 
-    const cameraLinks = {};
+    const cameraSlots = {};
     SLOTS.forEach((slot) => {
-      const link = document.createElement("a");
-      link.className = "camera-link";
-      link.id = `camera-${slot.id}-link`;
-      link.href = "#";
-      link.innerHTML = `
+      const card = document.createElement("div");
+      card.className = "camera-slot";
+      card.id = `camera-${slot.id}-slot`;
+      card.innerHTML = `
         <span class="camera-link-icon">
           <svg class="icon" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
         </span>
-        <span class="camera-link-body">
+        <span class="camera-slot-body">
           <span class="camera-link-title">${slot.label}</span>
-        </span>
-        <span class="camera-link-chevron">
-          <svg class="icon" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+          <span class="camera-slot-busy-label" hidden>Em uso</span>
+          <span class="lens-buttons">
+            <a class="lens-btn" data-facing="environment" href="#">Câmera Traseira</a>
+            <a class="lens-btn" data-facing="user" href="#">Câmera Frontal</a>
+          </span>
         </span>
       `;
-      cameraLinksEl.appendChild(link);
-      cameraLinks[slot.id] = link;
+      cameraLinksEl.appendChild(card);
+      cameraSlots[slot.id] = {
+        card,
+        busyLabel: card.querySelector(".camera-slot-busy-label"),
+        lensButtons: card.querySelectorAll("a.lens-btn"),
+      };
     });
 
     function updateLinks(name) {
       const encoded = encodeURIComponent(name.trim());
       SLOTS.forEach((slot) => {
-        cameraLinks[slot.id].href = `capture.html?mode=chunks&camera=${slot.id}&name=${encoded}`;
+        cameraSlots[slot.id].lensButtons.forEach((btn) => {
+          btn.href = `capture.html?mode=chunks&camera=${slot.id}&facing=${btn.dataset.facing}&name=${encoded}`;
+        });
       });
     }
 
@@ -180,10 +191,10 @@
         busyCameraIds = [];
       }
       SLOTS.forEach((slot) => {
-        const link = cameraLinks[slot.id];
+        const { card, busyLabel } = cameraSlots[slot.id];
         const busy = busyCameraIds.includes(slot.id);
-        link.classList.toggle("slot-busy", busy);
-        link.querySelector(".camera-link-title").textContent = busy ? `${slot.label} — Em uso` : slot.label;
+        card.classList.toggle("slot-busy", busy);
+        busyLabel.hidden = !busy;
       });
     }
 
