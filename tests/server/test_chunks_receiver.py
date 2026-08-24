@@ -6,6 +6,7 @@ import threading
 import time
 from pathlib import Path
 from unittest.mock import patch
+from urllib.parse import urlencode
 
 import pytest
 
@@ -28,11 +29,17 @@ def self_signed_cert(tmp_path: Path):
     return cert_path, key_path
 
 
+ADMIN_PASSWORD = "test-admin-password"
+
+
 def _start_server(tmp_path, cert_path, key_path, storage_root=None):
     storage_root = storage_root or (tmp_path / "storage")
     static_dir = tmp_path / "static"
     static_dir.mkdir(exist_ok=True)
     events_file = tmp_path / "events.jsonl"
+    admin_password_file = tmp_path / "admin-password.txt"
+    if not admin_password_file.exists():
+        admin_password_file.write_text(ADMIN_PASSWORD, encoding="utf-8")
 
     server = chunks_receiver.build_server(
         storage_root=storage_root,
@@ -41,6 +48,7 @@ def _start_server(tmp_path, cert_path, key_path, storage_root=None):
         cert_path=cert_path,
         key_path=key_path,
         events_file=events_file,
+        admin_password_file=admin_password_file,
         host="127.0.0.1",
         port=0,
     )
@@ -611,3 +619,127 @@ def test_storage_eject_returns_500_when_unmount_fails(tmp_path: Path, self_signe
             thread.join(timeout=2)
 
     assert response.status == 500
+
+
+def _delete_file(port, rel_path, password):
+    conn = _https_connection(port)
+    body = urlencode({"password": password})
+    conn.request(
+        "POST",
+        f"/delete-file?path={rel_path}",
+        body=body,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+    response = conn.getresponse()
+    response.read()
+    return response
+
+
+def test_delete_file_rejects_wrong_password(tmp_path: Path, self_signed_cert):
+    cert_path, key_path = self_signed_cert
+    storage_root = tmp_path / "storage"
+    day_dir = storage_root / "2026-08-20"
+    day_dir.mkdir(parents=True)
+    target = day_dir / "camera1_2026-08-20T18-32-10_parte1.webm"
+    target.write_bytes(b"video-bytes")
+
+    server, thread, port = _start_server(tmp_path, cert_path, key_path, storage_root)
+    try:
+        response = _delete_file(port, "2026-08-20/camera1_2026-08-20T18-32-10_parte1.webm", "wrong-password")
+        assert response.status == 403
+    finally:
+        server.shutdown()
+        thread.join(timeout=2)
+
+    assert target.exists()
+
+
+def test_delete_file_removes_a_loose_file(tmp_path: Path, self_signed_cert):
+    cert_path, key_path = self_signed_cert
+    storage_root = tmp_path / "storage"
+    day_dir = storage_root / "2026-08-20"
+    day_dir.mkdir(parents=True)
+    target = day_dir / "camera1_2026-08-20T18-32-10_parte1.webm"
+    target.write_bytes(b"video-bytes")
+
+    server, thread, port = _start_server(tmp_path, cert_path, key_path, storage_root)
+    try:
+        response = _delete_file(port, "2026-08-20/camera1_2026-08-20T18-32-10_parte1.webm", ADMIN_PASSWORD)
+        assert response.status == 204
+    finally:
+        server.shutdown()
+        thread.join(timeout=2)
+
+    assert not target.exists()
+
+
+def test_delete_file_removes_every_part_of_a_merged_recording(tmp_path: Path, self_signed_cert):
+    cert_path, key_path = self_signed_cert
+    storage_root = tmp_path / "storage"
+    day_dir = storage_root / "2026-08-20"
+    day_dir.mkdir(parents=True)
+    part1 = day_dir / "camera1_2026-08-20T18-32-10_parte1.webm"
+    part2 = day_dir / "camera1_2026-08-20T18-32-10_parte2.webm"
+    part1.write_bytes(b"part1")
+    part2.write_bytes(b"part2")
+
+    server, thread, port = _start_server(tmp_path, cert_path, key_path, storage_root)
+    try:
+        response = _delete_file(port, "2026-08-20/camera1_2026-08-20T18-32-10.webm", ADMIN_PASSWORD)
+        assert response.status == 204
+    finally:
+        server.shutdown()
+        thread.join(timeout=2)
+
+    assert not part1.exists()
+    assert not part2.exists()
+
+
+def test_delete_file_removes_a_whole_day_folder(tmp_path: Path, self_signed_cert):
+    cert_path, key_path = self_signed_cert
+    storage_root = tmp_path / "storage"
+    day_dir = storage_root / "2026-08-20"
+    day_dir.mkdir(parents=True)
+    (day_dir / "camera1_2026-08-20T18-32-10_parte1.webm").write_bytes(b"video-bytes")
+
+    server, thread, port = _start_server(tmp_path, cert_path, key_path, storage_root)
+    try:
+        response = _delete_file(port, "2026-08-20", ADMIN_PASSWORD)
+        assert response.status == 204
+    finally:
+        server.shutdown()
+        thread.join(timeout=2)
+
+    assert not day_dir.exists()
+
+
+def test_delete_file_rejects_path_escaping_storage_root(tmp_path: Path, self_signed_cert):
+    cert_path, key_path = self_signed_cert
+    storage_root = tmp_path / "storage"
+    storage_root.mkdir(parents=True)
+    outside_file = tmp_path / "outside.txt"
+    outside_file.write_text("should not be touched")
+
+    server, thread, port = _start_server(tmp_path, cert_path, key_path, storage_root)
+    try:
+        response = _delete_file(port, "../outside.txt", ADMIN_PASSWORD)
+        assert response.status == 400
+    finally:
+        server.shutdown()
+        thread.join(timeout=2)
+
+    assert outside_file.exists()
+
+
+def test_delete_file_returns_404_for_unknown_recording(tmp_path: Path, self_signed_cert):
+    cert_path, key_path = self_signed_cert
+    storage_root = tmp_path / "storage"
+    (storage_root / "2026-08-20").mkdir(parents=True)
+
+    server, thread, port = _start_server(tmp_path, cert_path, key_path, storage_root)
+    try:
+        response = _delete_file(port, "2026-08-20/camera1_does-not-exist.webm", ADMIN_PASSWORD)
+        assert response.status == 404
+    finally:
+        server.shutdown()
+        thread.join(timeout=2)

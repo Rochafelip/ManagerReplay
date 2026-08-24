@@ -16,6 +16,7 @@ def parse_args():
     parser.add_argument("--key", required=True, help="Path to mkcert-generated key file")
     parser.add_argument("--storage-root", default="~/managerreplay/data/recordings")
     parser.add_argument("--events-file", default="~/managerreplay/data/events.jsonl")
+    parser.add_argument("--admin-password-file", default="~/managerreplay/admin-password.txt")
     parser.add_argument("--static-dir", default=str(Path(__file__).parent / "static"))
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8443)
@@ -30,12 +31,7 @@ def main():
     key_path = Path(args.key).expanduser()
     events_file = Path(args.events_file).expanduser()
 
-    if args.mode == "chunks":
-        from server import chunks_receiver as receiver
-    else:
-        from server import webrtc_receiver as receiver
-
-    receiver.run(
+    run_kwargs = dict(
         storage_root=storage_root,
         n_cameras=args.cameras,
         static_dir=static_dir,
@@ -45,6 +41,14 @@ def main():
         host=args.host,
         port=args.port,
     )
+
+    if args.mode == "chunks":
+        from server import chunks_receiver as receiver
+        run_kwargs["admin_password_file"] = Path(args.admin_password_file).expanduser()
+    else:
+        from server import webrtc_receiver as receiver
+
+    receiver.run(**run_kwargs)
 
 
 if __name__ == "__main__":

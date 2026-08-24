@@ -1,3 +1,4 @@
+import hmac
 import json
 import re
 import shutil
@@ -33,6 +34,7 @@ class ChunksUploadHandler(SimpleHTTPRequestHandler):
     events_file: Path = None
     sessions_registry: dict = None
     sessions_lock: threading.Lock = None
+    admin_password: str = None
 
     # .pem served as a CA cert mimetype (instead of the default
     # application/octet-stream) so Chrome on Android hands it to the OS
@@ -227,6 +229,8 @@ class ChunksUploadHandler(SimpleHTTPRequestHandler):
             self._handle_storage_select()
         elif self.path.startswith("/storage-eject"):
             self._handle_storage_eject()
+        elif self.path.startswith("/delete-file"):
+            self._handle_delete_file()
         else:
             self.send_response(404)
             self.end_headers()
@@ -299,6 +303,49 @@ class ChunksUploadHandler(SimpleHTTPRequestHandler):
             detail = err.stderr or str(err)
             self.wfile.write(f"falha ao desmontar: {detail}".encode("utf-8"))
             return
+
+        self.send_response(204)
+        self.end_headers()
+
+    def _handle_delete_file(self):
+        query = parse_qs(urlparse(self.path).query)
+        rel_path = unquote(query.get("path", [""])[0])
+
+        length = int(self.headers.get("Content-Length", 0))
+        form = parse_qs(self.rfile.read(length).decode("utf-8"))
+        password = form.get("password", [""])[0]
+
+        if not rel_path or not self.admin_password or not hmac.compare_digest(password, self.admin_password):
+            self.send_response(403)
+            self.end_headers()
+            self.wfile.write(b"senha incorreta")
+            return
+
+        storage_root = self.storage_root.resolve()
+        target = (storage_root / rel_path).resolve()
+        if storage_root != target and storage_root not in target.parents:
+            self.send_response(400)
+            self.end_headers()
+            self.wfile.write(b"path invalido")
+            return
+
+        if target.is_dir():
+            shutil.rmtree(target)
+        elif target.exists():
+            target.unlink()
+        else:
+            # Nome "virtual" de gravação mesclada (ex.: camera1_SESSION.webm)
+            # -- ver file_listing._group_recording_parts -- não existe como
+            # arquivo de verdade; apaga todas as partes que a compõem.
+            match = _MERGED_RECORDING_PATTERN.match(target.name)
+            parts = find_session_parts(target.parent, *match.groups()) if match else []
+            if not parts:
+                self.send_response(404)
+                self.end_headers()
+                self.wfile.write(b"nao encontrado")
+                return
+            for part in parts:
+                part.unlink()
 
         self.send_response(204)
         self.end_headers()
@@ -402,13 +449,21 @@ def build_server(
     cert_path: Path,
     key_path: Path,
     events_file: Path,
+    admin_password_file: Path,
     host: str = "0.0.0.0",
     port: int = 8443,
 ) -> ThreadingHTTPServer:
+    if not admin_password_file.is_file():
+        raise FileNotFoundError(
+            f"admin password file not found: {admin_password_file} "
+            "(needed to gate deleting recordings -- create it with the password in plain text)"
+        )
+
     ChunksUploadHandler.storage_root = storage_root
     ChunksUploadHandler.default_storage_root = storage_root
     ChunksUploadHandler.n_cameras = n_cameras
     ChunksUploadHandler.events_file = events_file
+    ChunksUploadHandler.admin_password = admin_password_file.read_text(encoding="utf-8").strip()
     ChunksUploadHandler.sessions_registry = {}
     ChunksUploadHandler.sessions_lock = threading.Lock()
     handler = partial(ChunksUploadHandler, directory=str(static_dir))
@@ -427,12 +482,14 @@ def run(
     cert_path: Path,
     key_path: Path,
     events_file: Path,
+    admin_password_file: Path,
     host: str = "0.0.0.0",
     port: int = 8443,
 ):
     storage_root.mkdir(parents=True, exist_ok=True)
     server = build_server(
-        storage_root, n_cameras, static_dir, cert_path, key_path, events_file, host, port
+        storage_root, n_cameras, static_dir, cert_path, key_path, events_file,
+        admin_password_file, host, port,
     )
     print(f"[chunks] listening on https://{host}:{port}, storage={storage_root}")
     server.serve_forever()

@@ -24,17 +24,50 @@
     }
     #breadcrumb a { color: var(--accent); text-decoration: none; font-weight: 600; }
 
-    .entry {
+    .entry-swipe {
+      position: relative;
+      margin-bottom: 9px;
+      overflow: hidden;
+      border-radius: var(--radius-md);
+    }
+    .entry-delete-bg {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      justify-content: flex-end;
+      align-items: stretch;
+      background: var(--danger);
+      border-radius: var(--radius-md);
+    }
+    .entry-delete-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      width: 84px;
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .entry-front {
       display: flex;
       align-items: center;
       gap: 12px;
       padding: 14px 16px;
-      margin-bottom: 9px;
       text-decoration: none;
       color: inherit;
+      background: var(--card-bg);
+      border-radius: var(--radius-md);
+      position: relative;
+      touch-action: pan-y;
       transition: transform 0.12s ease;
     }
-    .entry:active { transform: scale(0.99); }
+    .entry-swipe.swiping .entry-front { transition: none; }
+    .entry-swipe.exiting { max-height: 0; margin-bottom: 0; opacity: 0; transition: max-height 0.2s ease, opacity 0.2s ease, margin-bottom 0.2s ease; }
 
     .entry-icon {
       flex: 0 0 auto;
@@ -72,6 +105,52 @@
       padding: 2.5em 0;
       font-size: 0.9rem;
     }
+
+    #delete-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.55);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 1000;
+    }
+    #delete-modal-overlay[hidden] { display: none; }
+    #delete-modal {
+      background: var(--card-bg);
+      padding: 18px;
+      max-width: 380px;
+      width: 100%;
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-lg);
+    }
+    #delete-modal h2 { font-size: 1rem; margin: 0 0 6px; }
+    #delete-modal p { font-size: 0.85rem; color: var(--text-secondary); margin: 0 0 14px; overflow-wrap: break-word; }
+    #delete-password {
+      display: block;
+      width: 100%;
+      padding: 12px 14px;
+      font-size: 1rem;
+      background: var(--bg);
+      border: 1px solid var(--border-strong);
+      color: var(--text);
+      border-radius: var(--radius-sm);
+      margin-bottom: 8px;
+    }
+    #delete-error { color: var(--danger); font-size: 0.8rem; font-weight: 700; min-height: 1.2em; margin-bottom: 8px; }
+    #delete-modal-actions { display: flex; gap: 8px; }
+    #delete-modal-actions button {
+      flex: 1;
+      padding: 11px;
+      border-radius: var(--radius-sm);
+      font-weight: 700;
+      font-size: 0.85rem;
+      cursor: pointer;
+      border: none;
+    }
+    #delete-cancel { background: var(--bg); color: var(--text); }
+    #delete-confirm { background: var(--danger); color: #fff; }
   </style>
 </head>
 <body>
@@ -97,6 +176,19 @@
     <div id="breadcrumb"></div>
     <div id="listing"></div>
 
+  </div>
+
+  <div id="delete-modal-overlay" hidden>
+    <div id="delete-modal">
+      <h2>Excluir</h2>
+      <p id="delete-modal-target"></p>
+      <input id="delete-password" type="password" placeholder="Senha admin" autocomplete="off" />
+      <div id="delete-error"></div>
+      <div id="delete-modal-actions">
+        <button id="delete-cancel" type="button">Cancelar</button>
+        <button id="delete-confirm" type="button">Excluir</button>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -156,12 +248,13 @@
       return `Replay do dia ${day}/${month}/${year}`;
     }
 
-    function renderEntry(entry) {
-      const childPath = currentPath ? `${currentPath}/${entry.name}` : entry.name;
+    const ICON_TRASH = '<svg class="icon" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
+
+    function buildEntryFront(entry, childPath) {
       if (entry.is_dir) {
         const isDayFolder = DAY_FOLDER_PATTERN.test(entry.name);
         const a = document.createElement("a");
-        a.className = "entry card";
+        a.className = "entry-front card";
         a.href = `files.html?path=${encodeURIComponent(childPath)}`;
         a.innerHTML = `
           <div class="entry-icon tone-folder">${isDayFolder ? ICON_CALENDAR : ICON_FOLDER}</div>
@@ -177,7 +270,7 @@
       const meta = [formatBytes(entry.size), duration, formatDate(entry.mtime)].filter(Boolean).join(" · ");
 
       const a = document.createElement("a");
-      a.className = "entry card";
+      a.className = "entry-front card";
       a.href = `/files/${childPath}`;
       a.download = entry.name;
       a.innerHTML = `
@@ -189,6 +282,23 @@
         <div class="entry-action">${ICON_DOWNLOAD} Baixar</div>
       `;
       return a;
+    }
+
+    function renderEntry(entry) {
+      const childPath = currentPath ? `${currentPath}/${entry.name}` : entry.name;
+
+      const wrapper = document.createElement("div");
+      wrapper.className = "entry-swipe";
+      wrapper.dataset.path = childPath;
+      wrapper.dataset.label = entry.is_dir ? formatFolderLabel(entry.name) : entry.name;
+
+      const deleteBg = document.createElement("div");
+      deleteBg.className = "entry-delete-bg";
+      deleteBg.innerHTML = `<button class="entry-delete-btn" type="button">${ICON_TRASH}Excluir</button>`;
+
+      wrapper.appendChild(deleteBg);
+      wrapper.appendChild(buildEntryFront(entry, childPath));
+      return wrapper;
     }
 
     async function load() {
@@ -209,6 +319,124 @@
     }
 
     load();
+
+    // --- Swipe-to-delete -------------------------------------------------
+    const REVEAL_PX = 84;
+    const SWIPE_THRESHOLD_PX = 40;
+    const listingEl = document.getElementById("listing");
+
+    let activeSwipe = null; // { wrapper, front, startX, currentX, moved }
+
+    function closeSwipe(wrapper) {
+      if (!wrapper) return;
+      wrapper.classList.remove("swiping", "open");
+      wrapper.querySelector(".entry-front").style.transform = "";
+    }
+
+    function closeAllSwipesExcept(except) {
+      listingEl.querySelectorAll(".entry-swipe").forEach((el) => {
+        if (el !== except) closeSwipe(el);
+      });
+    }
+
+    listingEl.addEventListener("touchstart", (event) => {
+      const wrapper = event.target.closest(".entry-swipe");
+      if (!wrapper) return;
+      const front = wrapper.querySelector(".entry-front");
+      closeAllSwipesExcept(wrapper);
+      activeSwipe = { wrapper, front, startX: event.touches[0].clientX, currentX: 0, moved: false };
+      wrapper.classList.add("swiping");
+    });
+
+    listingEl.addEventListener("touchmove", (event) => {
+      if (!activeSwipe) return;
+      const dx = event.touches[0].clientX - activeSwipe.startX;
+      // Already revealed and dragging further left, or dragging left from
+      // rest: clamp to [-REVEAL_PX, 0], never allow swiping right past rest.
+      const alreadyOpen = activeSwipe.wrapper.classList.contains("open");
+      const base = alreadyOpen ? -REVEAL_PX : 0;
+      const next = Math.max(-REVEAL_PX, Math.min(0, base + dx));
+      if (Math.abs(dx) > 8) activeSwipe.moved = true;
+      activeSwipe.currentX = next;
+      activeSwipe.front.style.transform = `translateX(${next}px)`;
+    }, { passive: true });
+
+    listingEl.addEventListener("touchend", () => {
+      if (!activeSwipe) return;
+      const { wrapper, front, currentX } = activeSwipe;
+      wrapper.classList.remove("swiping");
+      const shouldOpen = currentX <= -SWIPE_THRESHOLD_PX;
+      front.style.transform = shouldOpen ? `translateX(-${REVEAL_PX}px)` : "";
+      wrapper.classList.toggle("open", shouldOpen);
+      activeSwipe = null;
+    });
+
+    // A swipe that moved past the drag threshold shouldn't also trigger the
+    // link navigation/download underneath it.
+    listingEl.addEventListener("click", (event) => {
+      const wrapper = event.target.closest(".entry-swipe");
+      if (wrapper && wrapper.classList.contains("open")) {
+        event.preventDefault();
+      }
+    });
+
+    // --- Delete modal ------------------------------------------------------
+    const deleteOverlay = document.getElementById("delete-modal-overlay");
+    const deleteTargetLabel = document.getElementById("delete-modal-target");
+    const deletePasswordInput = document.getElementById("delete-password");
+    const deleteErrorEl = document.getElementById("delete-error");
+    const deleteConfirmBtn = document.getElementById("delete-confirm");
+
+    let pendingDeleteWrapper = null;
+
+    function openDeleteModal(wrapper) {
+      pendingDeleteWrapper = wrapper;
+      deleteTargetLabel.textContent = `Apagar "${wrapper.dataset.label}"? Essa ação não pode ser desfeita.`;
+      deletePasswordInput.value = "";
+      deleteErrorEl.textContent = "";
+      deleteOverlay.hidden = false;
+      deletePasswordInput.focus();
+    }
+
+    function closeDeleteModal() {
+      deleteOverlay.hidden = true;
+      pendingDeleteWrapper = null;
+    }
+
+    listingEl.addEventListener("click", (event) => {
+      const btn = event.target.closest(".entry-delete-btn");
+      if (!btn) return;
+      const wrapper = btn.closest(".entry-swipe");
+      openDeleteModal(wrapper);
+    });
+
+    document.getElementById("delete-cancel").addEventListener("click", closeDeleteModal);
+
+    deleteConfirmBtn.addEventListener("click", async () => {
+      if (!pendingDeleteWrapper) return;
+      const wrapper = pendingDeleteWrapper;
+      deleteErrorEl.textContent = "";
+      try {
+        const response = await fetch(`/delete-file?path=${encodeURIComponent(wrapper.dataset.path)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: `password=${encodeURIComponent(deletePasswordInput.value)}`,
+        });
+        if (response.status === 403) {
+          deleteErrorEl.textContent = "Senha incorreta.";
+          return;
+        }
+        if (!response.ok) {
+          deleteErrorEl.textContent = "Não deu pra apagar (erro no servidor).";
+          return;
+        }
+        closeDeleteModal();
+        wrapper.classList.add("exiting");
+        wrapper.addEventListener("transitionend", () => wrapper.remove(), { once: true });
+      } catch (err) {
+        deleteErrorEl.textContent = "Falha de conexão — tenta de novo.";
+      }
+    });
   </script>
 </body>
 </html>
