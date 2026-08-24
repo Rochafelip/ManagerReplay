@@ -47,7 +47,7 @@
       overflow: hidden;
       transition: opacity 0.25s ease;
     }
-    #camera-step.visible { margin-top: 26px; opacity: 1; max-height: 320px; }
+    #camera-step.visible { margin-top: 26px; opacity: 1; max-height: 600px; }
 
     a.camera-link {
       display: flex;
@@ -64,6 +64,15 @@
       transition: transform 0.12s ease, border-color 0.15s ease;
     }
     a.camera-link:active { transform: scale(0.99); }
+    a.camera-link.slot-busy {
+      pointer-events: none;
+      opacity: 0.55;
+      background: var(--card-bg-muted, #f1f5f9);
+    }
+    a.camera-link.slot-busy .camera-link-icon {
+      background: #e2e8f0;
+      color: var(--text-muted);
+    }
     .camera-link-icon {
       flex: 0 0 auto;
       width: 42px;
@@ -109,53 +118,96 @@
         <svg class="icon" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
         Qual câmera você vai usar?
       </label>
-      <a class="camera-link" id="camera-1-link" href="#">
-        <span class="camera-link-icon">
-          <svg class="icon" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
-        </span>
-        <span class="camera-link-body">
-          <span class="camera-link-title">Câmera traseira</span>
-        </span>
-        <span class="camera-link-chevron">
-          <svg class="icon" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
-        </span>
-      </a>
-      <a class="camera-link" id="camera-2-link" href="#">
-        <span class="camera-link-icon">
-          <svg class="icon" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
-        </span>
-        <span class="camera-link-body">
-          <span class="camera-link-title">Câmera frontal</span>
-        </span>
-        <span class="camera-link-chevron">
-          <svg class="icon" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
-        </span>
-      </a>
+      <div id="camera-links"></div>
     </div>
 
   </div>
 
   <script>
     const STORAGE_KEY = "managerreplay_operator_name";
+    const SLOTS = [
+      { id: 1, label: "Gol" },
+      { id: 2, label: "Lateral Esquerda" },
+      { id: 3, label: "Lateral Direita" },
+      { id: 4, label: "Geral" },
+    ];
+    const POLL_INTERVAL_MS = 3000;
+
     const nameInput = document.getElementById("name-input");
     const cameraStep = document.getElementById("camera-step");
-    const cameraLinks = {
-      1: document.getElementById("camera-1-link"),
-      2: document.getElementById("camera-2-link"),
-    };
+    const cameraLinksEl = document.getElementById("camera-links");
+
+    const cameraLinks = {};
+    SLOTS.forEach((slot) => {
+      const link = document.createElement("a");
+      link.className = "camera-link";
+      link.id = `camera-${slot.id}-link`;
+      link.href = "#";
+      link.innerHTML = `
+        <span class="camera-link-icon">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+        </span>
+        <span class="camera-link-body">
+          <span class="camera-link-title">${slot.label}</span>
+        </span>
+        <span class="camera-link-chevron">
+          <svg class="icon" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+        </span>
+      `;
+      cameraLinksEl.appendChild(link);
+      cameraLinks[slot.id] = link;
+    });
 
     function updateLinks(name) {
       const encoded = encodeURIComponent(name.trim());
-      cameraLinks[1].href = `capture.html?mode=chunks&camera=1&facing=environment&name=${encoded}`;
-      cameraLinks[2].href = `capture.html?mode=chunks&camera=2&facing=user&name=${encoded}`;
+      SLOTS.forEach((slot) => {
+        cameraLinks[slot.id].href = `capture.html?mode=chunks&camera=${slot.id}&name=${encoded}`;
+      });
+    }
+
+    let pollTimer = null;
+
+    async function refreshBusySlots() {
+      let busyCameraIds = [];
+      try {
+        const res = await fetch("/recording-status");
+        const sessions = await res.json();
+        busyCameraIds = sessions.map((s) => s.camera);
+      } catch (err) {
+        // Falha de rede no poll: assume "nenhum slot ocupado conhecido" em
+        // vez de travar a escolha — o backend continua sendo a fonte da
+        // verdade por camera_id de qualquer forma.
+        busyCameraIds = [];
+      }
+      SLOTS.forEach((slot) => {
+        const link = cameraLinks[slot.id];
+        const busy = busyCameraIds.includes(slot.id);
+        link.classList.toggle("slot-busy", busy);
+        link.querySelector(".camera-link-title").textContent = busy ? `${slot.label} — Em uso` : slot.label;
+      });
+    }
+
+    function startPolling() {
+      if (pollTimer) return;
+      refreshBusySlots();
+      pollTimer = setInterval(refreshBusySlots, POLL_INTERVAL_MS);
+    }
+
+    function stopPolling() {
+      clearInterval(pollTimer);
+      pollTimer = null;
     }
 
     function onNameChange() {
       const name = nameInput.value.trim();
-      cameraStep.classList.toggle("visible", name.length > 0);
-      if (name.length > 0) {
+      const visible = name.length > 0;
+      cameraStep.classList.toggle("visible", visible);
+      if (visible) {
         updateLinks(name);
         localStorage.setItem(STORAGE_KEY, name);
+        startPolling();
+      } else {
+        stopPolling();
       }
     }
 

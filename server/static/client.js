@@ -207,33 +207,32 @@ const LENS_HINTS = [
 ];
 
 function friendlyDeviceLabel(device, index, total) {
-  const base = facing === "user" ? "Frontal" : "Traseira";
   const lower = (device.label || "").toLowerCase();
+  const base = matchesFacing(lower, "user")
+    ? "Frontal"
+    : matchesFacing(lower, "environment")
+      ? "Traseira"
+      : `Câmera ${index + 1}`;
   const lensHint = LENS_HINTS.find(([pattern]) => pattern.test(lower));
   const suffix = lensHint ? ` (${lensHint[1]})` : "";
-  return total > 1 ? `${base} ${index + 1}${suffix}` : `${base}${suffix}`;
+  return total > 1 && base !== `Câmera ${index + 1}` ? `${base} ${index + 1}${suffix}` : `${base}${suffix}`;
 }
 
 async function populateDeviceSelect(activeStream) {
   const select = document.getElementById("camera-device");
   const devices = await navigator.mediaDevices.enumerateDevices();
+  // Lists every lens (frontal and traseira) so the operator can switch
+  // freely — camera slots no longer lock a phone to one side.
   const videoDevices = devices.filter((d) => d.kind === "videoinput");
-
-  // Restrict the list to the side (frontal/traseira) this camera slot is locked to.
-  // Labels are only reliably available once permission is granted, which is
-  // already true here since activeStream exists; fall back to the full list
-  // if no device label matches (some browsers/devices don't expose hints).
-  const matching = videoDevices.filter((d) => matchesFacing(d.label, facing));
-  const relevantDevices = matching.length > 0 ? matching : videoDevices;
 
   const activeTrack = activeStream.getVideoTracks()[0];
   const activeDeviceId = activeTrack ? activeTrack.getSettings().deviceId : null;
 
   select.innerHTML = "";
-  relevantDevices.forEach((device, index) => {
+  videoDevices.forEach((device, index) => {
     const option = document.createElement("option");
     option.value = device.deviceId;
-    option.textContent = friendlyDeviceLabel(device, index, relevantDevices.length);
+    option.textContent = friendlyDeviceLabel(device, index, videoDevices.length);
     if (device.deviceId === activeDeviceId) option.selected = true;
     select.appendChild(option);
   });

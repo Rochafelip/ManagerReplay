@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 def parse_args():
     parser = argparse.ArgumentParser(description="ManagerReplay server")
     parser.add_argument("--mode", choices=["chunks", "webrtc"], required=True)
-    parser.add_argument("--cameras", type=int, choices=[1, 2], required=True)
+    parser.add_argument("--cameras", type=int, choices=[1, 2, 3, 4], required=True)
     parser.add_argument("--cert", required=True, help="Path to mkcert-generated cert file")
     parser.add_argument("--key", required=True, help="Path to mkcert-generated key file")
     parser.add_argument("--storage-root", default="~/managerreplay/data/recordings")
