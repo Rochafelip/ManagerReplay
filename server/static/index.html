@@ -113,6 +113,20 @@
       border-radius: var(--radius-sm);
       cursor: pointer;
     }
+    #cert-modal button#confirm-cert-installed:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    #cert-download-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 10px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #92651a;
+    }
+    #cert-download-status.done { color: #15803d; }
     body.cert-modal-open { overflow: hidden; }
   </style>
 </head>
@@ -147,7 +161,11 @@
         <p style="margin-top:0.8em; font-size: 0.8em; color: #92651a;">
           Depois de baixar (Android): Configurações → Segurança → Criptografia e credenciais → Instalar um certificado → Certificado de CA → escolha o arquivo baixado.
         </p>
-        <button id="confirm-cert-installed" type="button">Já instalei</button>
+        <div id="cert-download-status">
+          <svg class="icon" width="14" height="14" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>
+          <span id="cert-download-status-label">Ainda não baixado</span>
+        </div>
+        <button id="confirm-cert-installed" type="button" disabled>Já instalei</button>
       </div>
     </div>
 
@@ -216,12 +234,36 @@
 
   <script>
     const CERT_INSTALLED_KEY = "managerreplay_cert_installed";
+    const CERT_DOWNLOADED_KEY = "managerreplay_cert_downloaded";
     const overlay = document.getElementById("cert-modal-overlay");
+    const confirmButton = document.getElementById("confirm-cert-installed");
+    const downloadStatus = document.getElementById("cert-download-status");
+    const downloadStatusLabel = document.getElementById("cert-download-status-label");
+
     if (!localStorage.getItem(CERT_INSTALLED_KEY)) {
       overlay.hidden = false;
       document.body.classList.add("cert-modal-open");
     }
-    document.getElementById("confirm-cert-installed").addEventListener("click", () => {
+
+    // "Já instalei" fica travado até a pessoa realmente clicar em baixar —
+    // não dá pra checar via JS se o certificado está de fato instalado no
+    // sistema (navegadores não expõem isso), então isso é o melhor sinal
+    // real que dá pra exigir antes de aceitar a confirmação.
+    function markDownloaded() {
+      localStorage.setItem(CERT_DOWNLOADED_KEY, "1");
+      confirmButton.disabled = false;
+      downloadStatus.classList.add("done");
+      downloadStatusLabel.textContent = "Baixado ✓";
+    }
+
+    if (localStorage.getItem(CERT_DOWNLOADED_KEY)) {
+      markDownloaded();
+    }
+
+    document.querySelector("#cert-modal a.cert-cta").addEventListener("click", markDownloaded);
+
+    confirmButton.addEventListener("click", () => {
+      if (confirmButton.disabled) return;
       localStorage.setItem(CERT_INSTALLED_KEY, "1");
       overlay.hidden = true;
       document.body.classList.remove("cert-modal-open");
