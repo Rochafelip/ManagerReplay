@@ -224,10 +224,28 @@
 
     nameInput.addEventListener("input", onNameChange);
 
+    // Melhor esforço pra sugerir o nome com o modelo do celular (só Android
+    // expõe isso no user agent de forma confiável; iOS não identifica o
+    // modelo exato). O campo continua editável normalmente.
+    function guessDeviceModel() {
+      const ua = navigator.userAgent;
+      const androidMatch = ua.match(/Android [^;]+;\s*([^;]+?)\s*(Build|\))/);
+      if (androidMatch) return androidMatch[1].trim();
+      if (/iPad/.test(ua)) return "iPad";
+      if (/iPhone/.test(ua)) return "iPhone";
+      return "";
+    }
+
     const savedName = localStorage.getItem(STORAGE_KEY);
     if (savedName) {
       nameInput.value = savedName;
       onNameChange();
+    } else {
+      const guessed = guessDeviceModel();
+      if (guessed) {
+        nameInput.value = guessed;
+        onNameChange();
+      }
     }
   </script>
 </body>
