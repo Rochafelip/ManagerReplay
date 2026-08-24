@@ -34,6 +34,17 @@ class ChunksUploadHandler(SimpleHTTPRequestHandler):
     sessions_registry: dict = None
     sessions_lock: threading.Lock = None
 
+    # .pem served as a CA cert mimetype (instead of the default
+    # application/octet-stream) so Chrome on Android hands it to the OS
+    # "install certificate" flow directly, rather than to the download
+    # manager -- which stays stuck "paused" forever on a hotspot with no
+    # internet uplink (Android refuses to run downloads on networks it
+    # can't validate as having internet).
+    extensions_map = {
+        **SimpleHTTPRequestHandler.extensions_map,
+        ".pem": "application/x-x509-ca-cert",
+    }
+
     def translate_path(self, path):
         if path.startswith("/files/") or path == "/files":
             original_directory = self.directory
