@@ -40,6 +40,9 @@ def _start_server(tmp_path, cert_path, key_path, storage_root=None):
     admin_password_file = tmp_path / "admin-password.txt"
     if not admin_password_file.exists():
         admin_password_file.write_text(ADMIN_PASSWORD, encoding="utf-8")
+    version_file = tmp_path / "VERSION"
+    if not version_file.exists():
+        version_file.write_text("1.0-test", encoding="utf-8")
 
     server = chunks_receiver.build_server(
         storage_root=storage_root,
@@ -49,6 +52,7 @@ def _start_server(tmp_path, cert_path, key_path, storage_root=None):
         key_path=key_path,
         events_file=events_file,
         admin_password_file=admin_password_file,
+        version_file=version_file,
         host="127.0.0.1",
         port=0,
     )
@@ -64,6 +68,27 @@ def _https_connection(port):
     ssl_context.check_hostname = False
     ssl_context.verify_mode = ssl.CERT_NONE
     return http.client.HTTPSConnection("127.0.0.1", port, context=ssl_context)
+
+
+def test_build_server_refuses_to_start_without_version_file(tmp_path: Path, self_signed_cert):
+    cert_path, key_path = self_signed_cert
+    admin_password_file = tmp_path / "admin-password.txt"
+    admin_password_file.write_text(ADMIN_PASSWORD, encoding="utf-8")
+    missing_version_file = tmp_path / "does-not-exist" / "VERSION"
+
+    with pytest.raises(FileNotFoundError, match="version file not found"):
+        chunks_receiver.build_server(
+            storage_root=tmp_path / "storage",
+            n_cameras=1,
+            static_dir=tmp_path / "static",
+            cert_path=cert_path,
+            key_path=key_path,
+            events_file=tmp_path / "events.jsonl",
+            admin_password_file=admin_password_file,
+            version_file=missing_version_file,
+            host="127.0.0.1",
+            port=0,
+        )
 
 
 def test_chunks_receiver_writes_posted_chunk_to_disk(tmp_path: Path, self_signed_cert):

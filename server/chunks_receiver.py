@@ -35,6 +35,7 @@ class ChunksUploadHandler(SimpleHTTPRequestHandler):
     sessions_registry: dict = None
     sessions_lock: threading.Lock = None
     admin_password: str = None
+    app_version: str = None
 
     # .pem served as a CA cert mimetype (instead of the default
     # application/octet-stream) so Chrome on Android hands it to the OS
@@ -450,6 +451,7 @@ def build_server(
     key_path: Path,
     events_file: Path,
     admin_password_file: Path,
+    version_file: Path,
     host: str = "0.0.0.0",
     port: int = 8443,
 ) -> ThreadingHTTPServer:
@@ -458,12 +460,18 @@ def build_server(
             f"admin password file not found: {admin_password_file} "
             "(needed to gate deleting recordings -- create it with the password in plain text)"
         )
+    if not version_file.is_file():
+        raise FileNotFoundError(
+            f"version file not found: {version_file} "
+            "(needed to show the app version on the Monitor screen -- create it with the version number in plain text)"
+        )
 
     ChunksUploadHandler.storage_root = storage_root
     ChunksUploadHandler.default_storage_root = storage_root
     ChunksUploadHandler.n_cameras = n_cameras
     ChunksUploadHandler.events_file = events_file
     ChunksUploadHandler.admin_password = admin_password_file.read_text(encoding="utf-8").strip()
+    ChunksUploadHandler.app_version = version_file.read_text(encoding="utf-8").strip()
     ChunksUploadHandler.sessions_registry = {}
     ChunksUploadHandler.sessions_lock = threading.Lock()
     handler = partial(ChunksUploadHandler, directory=str(static_dir))
@@ -483,13 +491,14 @@ def run(
     key_path: Path,
     events_file: Path,
     admin_password_file: Path,
+    version_file: Path,
     host: str = "0.0.0.0",
     port: int = 8443,
 ):
     storage_root.mkdir(parents=True, exist_ok=True)
     server = build_server(
         storage_root, n_cameras, static_dir, cert_path, key_path, events_file,
-        admin_password_file, host, port,
+        admin_password_file, version_file, host, port,
     )
     print(f"[chunks] listening on https://{host}:{port}, storage={storage_root}")
     server.serve_forever()
