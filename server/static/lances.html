@@ -44,6 +44,80 @@
       text-decoration: none;
     }
     #empty { color: var(--text-muted); text-align: center; padding: 2.5em 0; font-size: 0.9rem; }
+
+    .lance-swipe { position: relative; margin-bottom: 9px; overflow: hidden; border-radius: var(--radius-md); }
+    .lance-delete-bg {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      justify-content: flex-end;
+      align-items: stretch;
+      background: var(--danger);
+      border-radius: var(--radius-md);
+    }
+    .lance-delete-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      width: 84px;
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .lance-swipe .card.lance-card { position: relative; touch-action: pan-y; transition: transform 0.12s ease; margin-bottom: 0; }
+    .lance-swipe.swiping .card.lance-card { transition: none; }
+    .lance-swipe.exiting { max-height: 0; margin-bottom: 0; opacity: 0; transition: max-height 0.2s ease, opacity 0.2s ease, margin-bottom 0.2s ease; }
+
+    #delete-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.55);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 1000;
+    }
+    #delete-modal-overlay[hidden] { display: none; }
+    #delete-modal {
+      background: var(--card-bg);
+      padding: 18px;
+      max-width: 380px;
+      width: 100%;
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-lg);
+    }
+    #delete-modal h2 { font-size: 1rem; margin: 0 0 6px; }
+    #delete-modal p { font-size: 0.85rem; color: var(--text-secondary); margin: 0 0 14px; overflow-wrap: break-word; }
+    #delete-password {
+      display: block;
+      width: 100%;
+      padding: 12px 14px;
+      font-size: 1rem;
+      background: var(--bg);
+      border: 1px solid var(--border-strong);
+      color: var(--text);
+      border-radius: var(--radius-sm);
+      margin-bottom: 8px;
+    }
+    #delete-error { color: var(--danger); font-size: 0.8rem; font-weight: 700; min-height: 1.2em; margin-bottom: 8px; }
+    #delete-modal-actions { display: flex; gap: 8px; }
+    #delete-modal-actions button {
+      flex: 1;
+      padding: 11px;
+      border-radius: var(--radius-sm);
+      font-weight: 700;
+      font-size: 0.85rem;
+      cursor: pointer;
+      border: none;
+    }
+    #delete-cancel { background: var(--bg); color: var(--text); }
+    #delete-confirm { background: var(--danger); color: #fff; }
   </style>
 </head>
 <body>
@@ -71,6 +145,19 @@
 
   </div>
 
+  <div id="delete-modal-overlay" hidden>
+    <div id="delete-modal">
+      <h2>Excluir</h2>
+      <p id="delete-modal-target"></p>
+      <input id="delete-password" type="password" placeholder="Senha admin" autocomplete="off" />
+      <div id="delete-error"></div>
+      <div id="delete-modal-actions">
+        <button id="delete-cancel" type="button">Cancelar</button>
+        <button id="delete-confirm" type="button">Excluir</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const contentEl = document.getElementById("content");
 
@@ -79,7 +166,7 @@
     const ICON_DOWNLOAD = '<svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>';
 
     // Labels de posição dos slots de câmera — mesmo mapeamento de cameras.html.
-    const CAMERA_LABELS = { 1: "Gol", 2: "Lateral Esquerda", 3: "Lateral Direita", 4: "Geral" };
+    const CAMERA_LABELS = { 1: "Gol A", 2: "Gol B", 3: "Arquibancada A", 4: "Arquibancada B", 5: "Geral" };
 
     function cameraLabel(cameraId) {
       return CAMERA_LABELS[cameraId] || `Câmera ${cameraId}`;
@@ -109,9 +196,17 @@
       return `/files/${day}/lances/lance_camera${event.camera}_${sanitizeLanceName(event.nome)}.webm`;
     }
 
+    const ICON_TRASH = '<svg class="icon" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
+
     function renderCard(event) {
       const url = clipUrl(event);
-      return `
+      const wrapper = document.createElement("div");
+      wrapper.className = "lance-swipe";
+      wrapper.dataset.nome = event.nome;
+      wrapper.innerHTML = `
+        <div class="lance-delete-bg">
+          <button class="lance-delete-btn" type="button">${ICON_TRASH}Excluir</button>
+        </div>
         <div class="card lance-card">
           <div class="lance-top">
             <div>
@@ -122,6 +217,7 @@
           </div>
         </div>
       `;
+      return wrapper;
     }
 
     function render(events) {
@@ -129,7 +225,8 @@
         contentEl.innerHTML = '<div id="empty">Nenhum lance registrado ainda.</div>';
         return;
       }
-      contentEl.innerHTML = events.slice().reverse().map(renderCard).join("");
+      contentEl.innerHTML = "";
+      events.slice().reverse().forEach((event) => contentEl.appendChild(renderCard(event)));
     }
 
     async function load() {
@@ -142,6 +239,120 @@
         contentEl.innerHTML = `<div id="empty">erro: ${escapeHtml(err.message)}</div>`;
       }
     }
+
+    // --- Swipe-to-delete -------------------------------------------------
+    const REVEAL_PX = 84;
+    const SWIPE_THRESHOLD_PX = 40;
+
+    let activeSwipe = null; // { wrapper, front, startX, currentX, moved }
+
+    function closeSwipe(wrapper) {
+      if (!wrapper) return;
+      wrapper.classList.remove("swiping", "open");
+      wrapper.querySelector(".lance-card").style.transform = "";
+    }
+
+    function closeAllSwipesExcept(except) {
+      contentEl.querySelectorAll(".lance-swipe").forEach((el) => {
+        if (el !== except) closeSwipe(el);
+      });
+    }
+
+    contentEl.addEventListener("touchstart", (event) => {
+      const wrapper = event.target.closest(".lance-swipe");
+      if (!wrapper) return;
+      const front = wrapper.querySelector(".lance-card");
+      closeAllSwipesExcept(wrapper);
+      activeSwipe = { wrapper, front, startX: event.touches[0].clientX, currentX: 0, moved: false };
+      wrapper.classList.add("swiping");
+    });
+
+    contentEl.addEventListener("touchmove", (event) => {
+      if (!activeSwipe) return;
+      const dx = event.touches[0].clientX - activeSwipe.startX;
+      const alreadyOpen = activeSwipe.wrapper.classList.contains("open");
+      const base = alreadyOpen ? -REVEAL_PX : 0;
+      const next = Math.max(-REVEAL_PX, Math.min(0, base + dx));
+      if (Math.abs(dx) > 8) activeSwipe.moved = true;
+      activeSwipe.currentX = next;
+      activeSwipe.front.style.transform = `translateX(${next}px)`;
+    }, { passive: true });
+
+    contentEl.addEventListener("touchend", () => {
+      if (!activeSwipe) return;
+      const { wrapper, front, currentX } = activeSwipe;
+      wrapper.classList.remove("swiping");
+      const shouldOpen = currentX <= -SWIPE_THRESHOLD_PX;
+      front.style.transform = shouldOpen ? `translateX(-${REVEAL_PX}px)` : "";
+      wrapper.classList.toggle("open", shouldOpen);
+      activeSwipe = null;
+    });
+
+    contentEl.addEventListener("click", (event) => {
+      const wrapper = event.target.closest(".lance-swipe");
+      if (wrapper && wrapper.classList.contains("open") && !event.target.closest(".lance-delete-btn")) {
+        event.preventDefault();
+      }
+    });
+
+    // --- Delete modal ------------------------------------------------------
+    const deleteOverlay = document.getElementById("delete-modal-overlay");
+    const deleteTargetLabel = document.getElementById("delete-modal-target");
+    const deletePasswordInput = document.getElementById("delete-password");
+    const deleteErrorEl = document.getElementById("delete-error");
+    const deleteConfirmBtn = document.getElementById("delete-confirm");
+
+    let pendingDeleteWrapper = null;
+
+    function openDeleteModal(wrapper) {
+      pendingDeleteWrapper = wrapper;
+      const name = wrapper.querySelector(".lance-name").textContent;
+      deleteTargetLabel.textContent = `Apagar "${name}"? Essa ação não pode ser desfeita.`;
+      deletePasswordInput.value = "";
+      deleteErrorEl.textContent = "";
+      deleteOverlay.hidden = false;
+      deletePasswordInput.focus();
+    }
+
+    function closeDeleteModal() {
+      deleteOverlay.hidden = true;
+      pendingDeleteWrapper = null;
+    }
+
+    contentEl.addEventListener("click", (event) => {
+      const btn = event.target.closest(".lance-delete-btn");
+      if (!btn) return;
+      const wrapper = btn.closest(".lance-swipe");
+      openDeleteModal(wrapper);
+    });
+
+    document.getElementById("delete-cancel").addEventListener("click", closeDeleteModal);
+
+    deleteConfirmBtn.addEventListener("click", async () => {
+      if (!pendingDeleteWrapper) return;
+      const wrapper = pendingDeleteWrapper;
+      deleteErrorEl.textContent = "";
+      try {
+        const response = await fetch(`/delete-lance?nome=${encodeURIComponent(wrapper.dataset.nome)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: `password=${encodeURIComponent(deletePasswordInput.value)}`,
+        });
+        if (response.status === 403) {
+          deleteErrorEl.textContent = "Senha incorreta.";
+          return;
+        }
+        if (!response.ok) {
+          deleteErrorEl.textContent = "Não deu pra apagar (erro no servidor).";
+          return;
+        }
+        closeDeleteModal();
+        wrapper.classList.add("exiting");
+        wrapper.addEventListener("transitionend", () => wrapper.remove(), { once: true });
+      } catch (err) {
+        deleteErrorEl.textContent = "Falha de conexão — tenta de novo.";
+      }
+    });
 
     load();
     setInterval(load, 5000);
