@@ -33,6 +33,10 @@ A escolha de câmera em `cameras.html` hoje é uma lista vertical de 4 cards gen
 - O polling de `/recording-status` a cada 3s (já existente) continua igual — só muda o que é atualizado visualmente: os marcadores (cor + interatividade) em vez dos cards da lista. Mesmo comportamento fail-open se a consulta falhar (assume "nenhum slot ocupado conhecido").
 - O fluxo de nome (`#name-input`, sugestão por modelo do aparelho, `localStorage`) não muda — o campo aparece exatamente onde a lista de cards aparecia hoje (`#camera-step`, visível só depois de preencher o nome).
 
+## `gravando.html`
+
+- `CAMERA_LABELS` (linhas 94-100) é um mapa `camera_id → label` duplicado do que hoje vive em `cameras.html`, usado pra mostrar "quem está gravando em qual posição". Precisa ser atualizado pros mesmos 5 labels da tabela acima, senão mostra os nomes antigos (`"Gol"`, `"Lateral Esquerda"` etc.) enquanto `cameras.html` já mostra os novos.
+
 ## `app.py`
 
 - `--cameras` muda de `choices=[1, 2, 3, 4]` pra `choices=[1, 2, 3, 4, 5]`.
