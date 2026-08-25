@@ -106,7 +106,7 @@ Layout esperado na Pi, tudo sob `~/managerreplay/`:
      --cert ~/managerreplay/certs/<ip>.pem --key ~/managerreplay/certs/<ip>-key.pem
    ```
 
-`--cameras` aceita de 1 a 5 — cada número corresponde a uma posição fixa no campo mostrado em `cameras.html` (1=Gol Esquerdo, 2=Gol Direito, 3=Arquibancada Esquerda, 4=Arquibancada Direita, 5=Geral).
+`--cameras` aceita de 1 a 5 — cada número corresponde a uma posição fixa no campo mostrado em `cameras.html` (1=Gol A, 2=Gol B, 3=Arquibancada A, 4=Arquibancada B, 5=Geral). Lado A (azul) = câmeras 1 e 3; Lado B (vermelho) = câmeras 2 e 4.
 
 `--storage-root` e `--events-file` já usam `~/managerreplay/data/...` por padrão — só precisam ser passados se quiser outro local.
 
