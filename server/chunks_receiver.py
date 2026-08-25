@@ -12,11 +12,11 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
-from server.events import list_events, record_event
+from server.events import list_events, record_event, remove_event
 from server.file_listing import list_directory
 from server.monitor_status import detect_external_storage, get_disk_usage, read_live_status
 from server.sessions import list_sessions, record_chunk, start_session, stop_session
-from server.storage import build_day_dir, find_session_parts, save_chunk, save_lance_clip
+from server.storage import build_day_dir, find_session_parts, sanitize_lance_name, save_chunk, save_lance_clip
 
 # Matches the merged/virtual recording name produced by file_listing
 # (e.g. "camera2_2026-08-20T18-32-10.webm"), as opposed to a literal
@@ -233,6 +233,8 @@ class ChunksUploadHandler(SimpleHTTPRequestHandler):
             self._handle_storage_eject()
         elif self.path.startswith("/delete-file"):
             self._handle_delete_file()
+        elif self.path.startswith("/delete-lance"):
+            self._handle_delete_lance()
         else:
             self.send_response(404)
             self.end_headers()
@@ -348,6 +350,39 @@ class ChunksUploadHandler(SimpleHTTPRequestHandler):
                 return
             for part in parts:
                 part.unlink()
+
+        self.send_response(204)
+        self.end_headers()
+
+    def _handle_delete_lance(self):
+        query = parse_qs(urlparse(self.path).query)
+        nome = unquote(query.get("nome", [""])[0])
+
+        length = int(self.headers.get("Content-Length", 0))
+        form = parse_qs(self.rfile.read(length).decode("utf-8"))
+        password = form.get("password", [""])[0]
+
+        if not nome or not self.admin_password or not hmac.compare_digest(password, self.admin_password):
+            self.send_response(403)
+            self.end_headers()
+            self.wfile.write(b"senha incorreta")
+            return
+
+        removed = remove_event(self.events_file, nome)
+        if removed is None:
+            self.send_response(404)
+            self.end_headers()
+            self.wfile.write(b"nao encontrado")
+            return
+
+        clip_path = (
+            self.storage_root
+            / removed["timestamp"][:10]
+            / "lances"
+            / f"lance_camera{removed['camera']}_{sanitize_lance_name(nome)}.webm"
+        )
+        if clip_path.exists():
+            clip_path.unlink()
 
         self.send_response(204)
         self.end_headers()

@@ -822,3 +822,108 @@ def test_delete_file_returns_404_for_unknown_recording(tmp_path: Path, self_sign
     finally:
         server.shutdown()
         thread.join(timeout=2)
+
+
+def test_delete_lance_rejects_wrong_password(tmp_path: Path, self_signed_cert):
+    cert_path, key_path = self_signed_cert
+    server, thread, port = _start_server(tmp_path, cert_path, key_path)
+
+    try:
+        conn = _https_connection(port)
+        conn.request("POST", "/events?camera=1")
+        conn.getresponse().read()
+
+        conn = _https_connection(port)
+        conn.request(
+            "POST", "/delete-lance?nome=Lance+Epico+001",
+            body="password=wrong",
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        response = conn.getresponse()
+        response.read()
+        assert response.status == 403
+    finally:
+        server.shutdown()
+        thread.join(timeout=2)
+
+
+def test_delete_lance_returns_404_for_unknown_name(tmp_path: Path, self_signed_cert):
+    cert_path, key_path = self_signed_cert
+    server, thread, port = _start_server(tmp_path, cert_path, key_path)
+
+    try:
+        conn = _https_connection(port)
+        conn.request(
+            "POST", "/delete-lance?nome=Nao+Existe",
+            body=f"password={ADMIN_PASSWORD}",
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        response = conn.getresponse()
+        response.read()
+        assert response.status == 404
+    finally:
+        server.shutdown()
+        thread.join(timeout=2)
+
+
+def test_delete_lance_removes_event_and_clip(tmp_path: Path, self_signed_cert):
+    cert_path, key_path = self_signed_cert
+    storage_root = tmp_path / "storage"
+    server, thread, port = _start_server(tmp_path, cert_path, key_path, storage_root)
+
+    try:
+        conn = _https_connection(port)
+        conn.request("POST", "/events?camera=2")
+        event = json.loads(conn.getresponse().read())
+
+        conn = _https_connection(port)
+        conn.request(
+            "POST", f"/lance-clip?camera=2&nome={event['nome'].replace(' ', '+')}",
+            body=b"clip-bytes",
+        )
+        conn.getresponse().read()
+
+        clip_matches = list(storage_root.glob("*/lances/lance_camera2_LanceEpico001.webm"))
+        assert len(clip_matches) == 1
+
+        conn = _https_connection(port)
+        conn.request(
+            "POST", f"/delete-lance?nome={event['nome'].replace(' ', '+')}",
+            body=f"password={ADMIN_PASSWORD}",
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        response = conn.getresponse()
+        response.read()
+        assert response.status == 204
+
+        conn = _https_connection(port)
+        conn.request("GET", "/events-list")
+        remaining = json.loads(conn.getresponse().read())
+        assert remaining == []
+        assert not clip_matches[0].exists()
+    finally:
+        server.shutdown()
+        thread.join(timeout=2)
+
+
+def test_delete_lance_succeeds_when_clip_was_never_uploaded(tmp_path: Path, self_signed_cert):
+    cert_path, key_path = self_signed_cert
+    server, thread, port = _start_server(tmp_path, cert_path, key_path)
+
+    try:
+        conn = _https_connection(port)
+        conn.request("POST", "/events?camera=1")
+        event = json.loads(conn.getresponse().read())
+
+        conn = _https_connection(port)
+        conn.request(
+            "POST", f"/delete-lance?nome={event['nome'].replace(' ', '+')}",
+            body=f"password={ADMIN_PASSWORD}",
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        response = conn.getresponse()
+        response.read()
+        assert response.status == 204
+    finally:
+        server.shutdown()
+        thread.join(timeout=2)
