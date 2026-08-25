@@ -49,19 +49,39 @@
     }
     #camera-step.visible { margin-top: 26px; opacity: 1; max-height: 600px; }
 
-    .camera-slot {
+    .pitch-wrap {
+      display: flex;
+      justify-content: center;
+      background: #14532d;
+      border-radius: var(--radius-md);
+      padding: 10px;
+      box-shadow: var(--shadow-sm);
+    }
+    #pitch-svg { width: 100%; height: auto; display: block; touch-action: manipulation; }
+    .pitch-field { fill: #2f9e44; stroke: #ffffff; stroke-width: 1.5; }
+    .pitch-line { stroke: #ffffff; stroke-width: 1.5; fill: none; }
+
+    .pitch-marker { cursor: pointer; }
+    .pitch-marker .marker-hit { fill: transparent; }
+    .pitch-marker .marker-dot { fill: var(--accent); stroke: #ffffff; stroke-width: 1.5; transition: fill 0.15s ease, stroke-width 0.15s ease; }
+    .pitch-marker .marker-label { fill: #ffffff; font-size: 9px; font-weight: 700; text-anchor: middle; pointer-events: none; }
+    .pitch-marker.marker-selected .marker-dot { stroke-width: 3; stroke: #fde047; }
+    .pitch-marker.marker-busy { cursor: default; }
+    .pitch-marker.marker-busy .marker-dot { fill: #64748b; }
+    .pitch-marker.marker-busy .marker-label { fill: #cbd5e1; }
+
+    #slot-detail {
       display: flex;
       align-items: center;
       gap: 12px;
       padding: 14px 16px;
-      margin-bottom: 10px;
+      margin-top: 12px;
       background: var(--card-bg);
       border: 1px solid var(--border);
       border-radius: var(--radius-md);
       box-shadow: var(--shadow-sm);
     }
-    .camera-slot.slot-busy { opacity: 0.55; background: var(--card-bg-muted, #f1f5f9); }
-    .camera-slot.slot-busy .camera-link-icon { background: #e2e8f0; color: var(--text-muted); }
+    #slot-detail[hidden] { display: none; }
     .camera-link-icon {
       flex: 0 0 auto;
       width: 42px;
@@ -90,7 +110,6 @@
       transition: transform 0.12s ease;
     }
     a.lens-btn:active { transform: scale(0.97); }
-    .camera-slot.slot-busy .lens-buttons { display: none; }
   </style>
 </head>
 <body>
@@ -122,7 +141,29 @@
         <svg class="icon" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
         Qual câmera você vai usar?
       </label>
-      <div id="camera-links"></div>
+      <div class="pitch-wrap">
+        <svg id="pitch-svg" viewBox="0 0 280 180" xmlns="http://www.w3.org/2000/svg">
+          <rect class="pitch-field" x="10" y="10" width="260" height="160" rx="6" />
+          <line class="pitch-line" x1="140" y1="10" x2="140" y2="170" />
+          <circle class="pitch-line" cx="140" cy="90" r="28" />
+          <rect class="pitch-line" x="10" y="55" width="28" height="70" />
+          <rect class="pitch-line" x="242" y="55" width="28" height="70" />
+          <g id="pitch-markers"></g>
+        </svg>
+      </div>
+      <div id="slot-detail" hidden>
+        <span class="camera-link-icon">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+        </span>
+        <span class="camera-slot-body">
+          <span class="camera-link-title" id="slot-detail-title"></span>
+          <span class="camera-slot-busy-label" id="slot-detail-busy" hidden>Em uso</span>
+          <span class="lens-buttons" id="slot-detail-lenses">
+            <a class="lens-btn" data-facing="environment" href="#">Câmera Traseira</a>
+            <a class="lens-btn" data-facing="user" href="#">Câmera Frontal</a>
+          </span>
+        </span>
+      </div>
     </div>
 
   </div>
@@ -130,50 +171,71 @@
   <script>
     const STORAGE_KEY = "managerreplay_operator_name";
     const SLOTS = [
-      { id: 1, label: "Gol" },
-      { id: 2, label: "Lateral Esquerda" },
-      { id: 3, label: "Lateral Direita" },
-      { id: 4, label: "Geral" },
+      { id: 1, label: "Gol Esquerdo", abbr: "Gol E", x: 24, y: 90 },
+      { id: 2, label: "Gol Direito", abbr: "Gol D", x: 256, y: 90 },
+      { id: 3, label: "Arquibancada Esquerda", abbr: "Arq. E", x: 140, y: 20 },
+      { id: 4, label: "Arquibancada Direita", abbr: "Arq. D", x: 140, y: 160 },
+      { id: 5, label: "Geral", abbr: "Geral", x: 140, y: 90 },
     ];
     const POLL_INTERVAL_MS = 3000;
+    const SVG_NS = "http://www.w3.org/2000/svg";
 
     const nameInput = document.getElementById("name-input");
     const cameraStep = document.getElementById("camera-step");
-    const cameraLinksEl = document.getElementById("camera-links");
+    const markersGroup = document.getElementById("pitch-markers");
+    const slotDetail = document.getElementById("slot-detail");
+    const slotDetailTitle = document.getElementById("slot-detail-title");
+    const slotDetailBusy = document.getElementById("slot-detail-busy");
+    const slotDetailLenses = document.getElementById("slot-detail-lenses");
 
-    const cameraSlots = {};
+    function svgEl(tag, attrs) {
+      const el = document.createElementNS(SVG_NS, tag);
+      Object.entries(attrs).forEach(([key, value]) => el.setAttribute(key, value));
+      return el;
+    }
+
+    const cameraMarkers = {};
     SLOTS.forEach((slot) => {
-      const card = document.createElement("div");
-      card.className = "camera-slot";
-      card.id = `camera-${slot.id}-slot`;
-      card.innerHTML = `
-        <span class="camera-link-icon">
-          <svg class="icon" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
-        </span>
-        <span class="camera-slot-body">
-          <span class="camera-link-title">${slot.label}</span>
-          <span class="camera-slot-busy-label" hidden>Em uso</span>
-          <span class="lens-buttons">
-            <a class="lens-btn" data-facing="environment" href="#">Câmera Traseira</a>
-            <a class="lens-btn" data-facing="user" href="#">Câmera Frontal</a>
-          </span>
-        </span>
-      `;
-      cameraLinksEl.appendChild(card);
-      cameraSlots[slot.id] = {
-        card,
-        busyLabel: card.querySelector(".camera-slot-busy-label"),
-        lensButtons: card.querySelectorAll("a.lens-btn"),
-      };
+      const g = svgEl("g", { class: "pitch-marker", "data-camera-id": slot.id });
+      g.appendChild(svgEl("circle", { class: "marker-hit", cx: slot.x, cy: slot.y, r: 16 }));
+      g.appendChild(svgEl("circle", { class: "marker-dot", cx: slot.x, cy: slot.y, r: 10 }));
+      g.appendChild(svgEl("text", { class: "marker-label", x: slot.x, y: slot.y + 22 })).textContent = slot.abbr;
+      markersGroup.appendChild(g);
+      cameraMarkers[slot.id] = { group: g, busy: false };
+    });
+
+    let selectedCameraId = null;
+
+    function selectSlot(cameraId) {
+      const slot = SLOTS.find((s) => s.id === cameraId);
+      const marker = cameraMarkers[cameraId];
+      if (!slot || !marker || marker.busy) return;
+
+      if (selectedCameraId !== null && cameraMarkers[selectedCameraId]) {
+        cameraMarkers[selectedCameraId].group.classList.remove("marker-selected");
+      }
+      selectedCameraId = cameraId;
+      marker.group.classList.add("marker-selected");
+
+      slotDetailTitle.textContent = slot.label;
+      slotDetailBusy.hidden = true;
+      slotDetailLenses.hidden = false;
+      const encodedName = encodeURIComponent(nameInput.value.trim());
+      slotDetailLenses.querySelectorAll("a.lens-btn").forEach((btn) => {
+        btn.href = `capture.html?mode=chunks&camera=${cameraId}&facing=${btn.dataset.facing}&name=${encodedName}`;
+      });
+      slotDetail.hidden = false;
+    }
+
+    markersGroup.addEventListener("click", (event) => {
+      const g = event.target.closest(".pitch-marker");
+      if (!g) return;
+      selectSlot(Number(g.dataset.cameraId));
     });
 
     function updateLinks(name) {
-      const encoded = encodeURIComponent(name.trim());
-      SLOTS.forEach((slot) => {
-        cameraSlots[slot.id].lensButtons.forEach((btn) => {
-          btn.href = `capture.html?mode=chunks&camera=${slot.id}&facing=${btn.dataset.facing}&name=${encoded}`;
-        });
-      });
+      if (selectedCameraId === null) return;
+      selectSlot(selectedCameraId);
     }
 
     let pollTimer = null;
@@ -191,10 +253,15 @@
         busyCameraIds = [];
       }
       SLOTS.forEach((slot) => {
-        const { card, busyLabel } = cameraSlots[slot.id];
+        const marker = cameraMarkers[slot.id];
         const busy = busyCameraIds.includes(slot.id);
-        card.classList.toggle("slot-busy", busy);
-        busyLabel.hidden = !busy;
+        marker.busy = busy;
+        marker.group.classList.toggle("marker-busy", busy);
+        if (busy && selectedCameraId === slot.id) {
+          marker.group.classList.remove("marker-selected");
+          selectedCameraId = null;
+          slotDetail.hidden = true;
+        }
       });
     }
 
