@@ -207,6 +207,7 @@ class ChunksUploadHandler(SimpleHTTPRequestHandler):
 
         status.update(get_disk_usage(self.storage_root))
         status["external_storage"] = detect_external_storage()
+        status["app_version"] = self.app_version
 
         body = json.dumps(status).encode("utf-8")
         self.send_response(200)

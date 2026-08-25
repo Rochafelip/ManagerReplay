@@ -415,6 +415,60 @@ def test_monitor_status_route_returns_live_reading_plus_disk_usage(tmp_path: Pat
     assert body["external_storage"] == fake_external_storage
 
 
+def test_monitor_status_route_returns_app_version(tmp_path: Path, self_signed_cert):
+    cert_path, key_path = self_signed_cert
+    fake_status = {
+        "timestamp": "2026-08-20 18:00:00",
+        "cpu_pct": 8.2,
+        "ram_used_mb": 164,
+        "ram_total_mb": 955,
+        "temp_c": 41.3,
+        "arm_clock_mhz": 700,
+        "core_clock_mhz": 275,
+        "undervoltage_now": False,
+        "freq_capped_now": False,
+        "throttled_now": False,
+        "undervoltage_ever": False,
+    }
+
+    version_file = tmp_path / "VERSION"
+    version_file.write_text("2.3\n", encoding="utf-8")
+
+    with patch("server.chunks_receiver.read_live_status", return_value=fake_status), \
+         patch("server.chunks_receiver.detect_external_storage", return_value=[]):
+        static_dir = tmp_path / "static"
+        static_dir.mkdir(exist_ok=True)
+        admin_password_file = tmp_path / "admin-password.txt"
+        admin_password_file.write_text(ADMIN_PASSWORD, encoding="utf-8")
+        server = chunks_receiver.build_server(
+            storage_root=tmp_path / "storage",
+            n_cameras=1,
+            static_dir=static_dir,
+            cert_path=cert_path,
+            key_path=key_path,
+            events_file=tmp_path / "events.jsonl",
+            admin_password_file=admin_password_file,
+            version_file=version_file,
+            host="127.0.0.1",
+            port=0,
+        )
+        port = server.server_address[1]
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        time.sleep(0.2)
+        try:
+            conn = _https_connection(port)
+            conn.request("GET", "/monitor-status")
+            response = conn.getresponse()
+            body = json.loads(response.read())
+        finally:
+            server.shutdown()
+            thread.join(timeout=2)
+
+    assert response.status == 200
+    assert body["app_version"] == "2.3"
+
+
 def test_monitor_status_route_returns_503_when_measurement_fails(tmp_path: Path, self_signed_cert):
     cert_path, key_path = self_signed_cert
 
