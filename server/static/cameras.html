@@ -56,6 +56,8 @@
       border-radius: var(--radius-md);
       padding: 10px;
       box-shadow: var(--shadow-sm);
+      max-width: 480px;
+      margin: 0 auto;
     }
     #pitch-svg { width: 100%; height: auto; display: block; touch-action: manipulation; }
     .pitch-field { fill: #2f9e44; stroke: #ffffff; stroke-width: 1.5; }
@@ -65,6 +67,9 @@
     .pitch-marker .marker-hit { fill: transparent; }
     .pitch-marker .marker-dot { fill: var(--accent); stroke: #ffffff; stroke-width: 1.5; transition: fill 0.15s ease, stroke-width 0.15s ease; }
     .pitch-marker .marker-label { fill: #ffffff; font-size: 9px; font-weight: 700; text-anchor: middle; pointer-events: none; }
+    .pitch-marker.marker-side-a .marker-dot { fill: #2563eb; }
+    .pitch-marker.marker-side-b .marker-dot { fill: #dc2626; }
+    .pitch-marker.marker-side-judge .marker-dot { fill: #111827; stroke: #facc15; }
     .pitch-marker.marker-selected .marker-dot { stroke-width: 3; stroke: #fde047; }
     .pitch-marker.marker-busy { cursor: default; }
     .pitch-marker.marker-busy .marker-dot { fill: #64748b; }
@@ -171,11 +176,11 @@
   <script>
     const STORAGE_KEY = "managerreplay_operator_name";
     const SLOTS = [
-      { id: 1, label: "Gol Esquerdo", abbr: "Gol E", x: 24, y: 90 },
-      { id: 2, label: "Gol Direito", abbr: "Gol D", x: 256, y: 90 },
-      { id: 3, label: "Arquibancada Esquerda", abbr: "Arq. E", x: 140, y: 20 },
-      { id: 4, label: "Arquibancada Direita", abbr: "Arq. D", x: 140, y: 160 },
-      { id: 5, label: "Geral", abbr: "Geral", x: 140, y: 90 },
+      { id: 1, label: "Gol Esquerdo", abbr: "Gol E", x: 24, y: 90, side: "a" },
+      { id: 2, label: "Gol Direito", abbr: "Gol D", x: 256, y: 90, side: "b" },
+      { id: 3, label: "Arquibancada Esquerda", abbr: "Arq. E", x: 140, y: 20, side: "a" },
+      { id: 4, label: "Arquibancada Direita", abbr: "Arq. D", x: 140, y: 160, side: "b" },
+      { id: 5, label: "Geral", abbr: "Geral", x: 140, y: 90, side: "judge" },
     ];
     const POLL_INTERVAL_MS = 3000;
     const SVG_NS = "http://www.w3.org/2000/svg";
@@ -196,7 +201,7 @@
 
     const cameraMarkers = {};
     SLOTS.forEach((slot) => {
-      const g = svgEl("g", { class: "pitch-marker", "data-camera-id": slot.id });
+      const g = svgEl("g", { class: `pitch-marker marker-side-${slot.side}`, "data-camera-id": slot.id });
       g.appendChild(svgEl("circle", { class: "marker-hit", cx: slot.x, cy: slot.y, r: 16 }));
       g.appendChild(svgEl("circle", { class: "marker-dot", cx: slot.x, cy: slot.y, r: 10 }));
       g.appendChild(svgEl("text", { class: "marker-label", x: slot.x, y: slot.y + 22 })).textContent = slot.abbr;
