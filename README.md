@@ -88,13 +88,18 @@ Layout esperado na Pi, tudo sob `~/managerreplay/`:
    ```bash
    rsync -av --exclude .venv --exclude __pycache__ server/ rocha@<ip-da-pi>:~/managerreplay/server/
    ```
-2. **Gerar o certificado HTTPS** (uma vez, ou quando o IP do hotspot mudar):
+2. **Sincronizar a versão** (bump o número em `VERSION` antes de commitar qualquer mudança que valha marcar como nova versão; depois copie o arquivo pra Pi):
+   ```bash
+   scp VERSION rocha@<ip-da-pi>:~/managerreplay/VERSION
+   ```
+   A tela **Monitor** mostra esse número — depois de um deploy, confira lá se bate com o que você esperava, como forma de confirmar que o deploy realmente pegou.
+3. **Gerar o certificado HTTPS** (uma vez, ou quando o IP do hotspot mudar):
    ```bash
    mkcert -install
    mkdir -p ~/managerreplay/certs && cd ~/managerreplay/certs
    mkcert <ip-do-hotspot>   # ex: mkcert 10.42.0.1
    ```
-3. **Subir o servidor** — via systemd (ver seção abaixo, recomendado) ou manualmente pra testar:
+4. **Subir o servidor** — via systemd (ver seção abaixo, recomendado) ou manualmente pra testar:
    ```bash
    cd ~/managerreplay/server
    .venv/bin/python app.py --mode=chunks --cameras=1 \
