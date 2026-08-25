@@ -367,6 +367,11 @@
       if (status.undervoltage_ever) alerts.push({ icon: ICON_INFO, tone: "info", text: "Já ocorreu subvoltagem desde que a Pi ligou." });
 
       contentEl.innerHTML = `
+        <div class="card stat-card" style="margin-bottom: 10px;">
+          <div class="label">Versão</div>
+          <div class="value" style="font-size:1.1em;">v${escapeHtml(status.app_version)}</div>
+        </div>
+
         <div class="grid">
           <div class="card stat-card">
             <div class="label">CPU</div>
