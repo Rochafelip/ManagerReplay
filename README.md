@@ -24,12 +24,13 @@ Contexto completo do produto, decisões de arquitetura e riscos técnicos em [`C
 1. A Raspberry Pi liga e sobe sozinha — hotspot Wi-Fi aberto e o app já rodando, sem precisar de SSH nem tela.
 2. Os celulares conectam nesse Wi-Fi e acessam `https://<ip-do-hotspot>:8443/` pelo navegador (dá pra "Adicionar à tela inicial" pra virar um ícone de app de verdade, com ícone próprio).
 3. Na primeira vez, o celular baixa e instala o certificado de segurança direto pelo app (banner na tela inicial).
-4. Quem vai gravar digita o nome e escolhe a câmera: **Câmera 1 é sempre a traseira**, **Câmera 2 é sempre a frontal** — o seletor de dispositivo só mostra as lentes daquele lado.
+4. Quem vai gravar digita o nome e escolhe a câmera tocando numa posição no campo de futebol desenhado em **Câmeras**: **Gol A**/**Gol B** (azul/vermelho), **Arquibancada A**/**Arquibancada B** (azul/vermelho) ou **Geral** (preto/amarelo) — até 5 pessoas gravando ao mesmo tempo, cada posição trava sozinha enquanto estiver em uso. A lente (traseira/frontal) é escolhida livremente na tela de gravação, não fica presa à posição.
 5. Antes de gravar, escolhe a qualidade (HD/FHD, 30/60fps) e aperta **● Iniciar gravação**. O vídeo é enviado em pedaços de 30s pro Pi (trocar de câmera no meio da gravação não reinicia a sessão — só troca a lente ao vivo).
-6. Depois de 30s de gravação, o botão **⚡ Lance** libera — aperta pra marcar um momento importante (nome tipo "LanceEpico 003" + timestamp, com vibração e flash de confirmação).
-7. **📹 Quem está gravando** mostra ao vivo quem está com a câmera ativa, em qual câmera, e se está enviando dados normalmente.
-8. **📁 Arquivos** lista as gravações organizadas por dia, com download direto.
-9. **📊 Monitor** mostra CPU/RAM/temperatura/armazenamento da Pi sob demanda (sem nada rodando em background).
+6. Depois de 30s de gravação, o botão **⚡ Lance** libera — aperta pra marcar um momento importante (nome tipo "Lance Epico 003" + timestamp, com vibração e flash de confirmação).
+7. **📹 Quem está gravando** mostra ao vivo quem está com a câmera ativa, em qual posição, e se está enviando dados normalmente.
+8. **📁 Arquivos** lista as gravações organizadas por dia, com download direto — arrastar um item pra esquerda revela **Excluir**, protegido por senha admin.
+9. **⚡ Lances** lista os clipes curtos marcados durante as gravações, com download direto — mesmo gesto de swipe-to-delete de Arquivos, também protegido por senha admin.
+10. **📊 Monitor** mostra CPU/RAM/temperatura/armazenamento da Pi sob demanda (sem nada rodando em background), além da versão do app atualmente rodando (`VERSION`).
 
 ## Stack
 
@@ -40,23 +41,27 @@ Contexto completo do produto, decisões de arquitetura e riscos técnicos em [`C
 ## Estrutura do repositório
 
 ```
+VERSION                  número de versão do app (bump manual, mostrado na tela Monitor)
 server/                  pacote Python do servidor (o nome da pasta importa — veja nota abaixo)
 ├── app.py               entrypoint CLI
 ├── chunks_receiver.py   servidor HTTPS (modo chunks, via stdlib http.server) — rotas da API
 ├── webrtc_receiver.py   servidor HTTPS (modo webrtc, via aiohttp/aiortc — não usado pela UI hoje)
 ├── storage.py           onde/como os vídeos são salvos (pastas por dia, nome por câmera+sessão+parte)
-├── events.py            registro dos "lances" (events.jsonl)
+├── events.py            registro e remoção dos "lances" (events.jsonl)
 ├── sessions.py           quem está gravando agora (estado em memória, pra tela "Quem está gravando")
 ├── file_listing.py      listagem de diretório pro explorador de arquivos
 ├── monitor_status.py    leitura sob demanda de CPU/RAM/temperatura/disco da Pi
 └── static/               HTML/CSS/JS servido pro navegador do celular
     ├── index.html         menu inicial + banner de instalação do certificado
-    ├── cameras.html        nome do operador + escolha de câmera (1=traseira, 2=frontal)
+    ├── cameras.html        nome do operador + escolha de posição no campo de futebol (5 posições)
     ├── capture.html         tela de gravação (vídeo, qualidade, lance, troca de câmera ao vivo)
     ├── gravando.html        quem está gravando agora, ao vivo
-    ├── files.html           explorador de arquivos gravados
-    └── monitor.html         saúde da Pi sob demanda
-deploy/systemd/          unit files pro servidor subir sozinho no boot
+    ├── files.html           explorador de arquivos gravados, com swipe-to-delete
+    ├── lances.html          clipes curtos marcados durante as gravações, com swipe-to-delete
+    └── monitor.html         saúde da Pi sob demanda + versão do app
+deploy/systemd/          unit files pro servidor e pro captive portal subirem sozinhos no boot
+deploy/captive-portal/   servidor HTTP mínimo que faz o Wi-Fi abrir o app sozinho no celular
+deploy/network/          drop-in de dnsmasq usado pelo captive portal
 tests/server/             testes automatizados (pytest)
 docs/superpowers/         specs, planos e runbooks de decisões de design
 ```
@@ -93,13 +98,18 @@ Layout esperado na Pi, tudo sob `~/managerreplay/`:
    scp VERSION rocha@<ip-da-pi>:~/managerreplay/VERSION
    ```
    A tela **Monitor** mostra esse número — depois de um deploy, confira lá se bate com o que você esperava, como forma de confirmar que o deploy realmente pegou.
-3. **Gerar o certificado HTTPS** (uma vez, ou quando o IP do hotspot mudar):
+3. **Criar a senha admin** (uma vez — protege o "Excluir" em Arquivos e Lances; sem esse arquivo o servidor recusa subir):
+   ```bash
+   echo "SUA_SENHA_AQUI" > ~/managerreplay/admin-password.txt
+   chmod 600 ~/managerreplay/admin-password.txt
+   ```
+4. **Gerar o certificado HTTPS** (uma vez, ou quando o IP do hotspot mudar):
    ```bash
    mkcert -install
    mkdir -p ~/managerreplay/certs && cd ~/managerreplay/certs
    mkcert <ip-do-hotspot>   # ex: mkcert 10.42.0.1
    ```
-4. **Subir o servidor** — via systemd (ver seção abaixo, recomendado) ou manualmente pra testar:
+5. **Subir o servidor** — via systemd (ver seção abaixo, recomendado) ou manualmente pra testar:
    ```bash
    cd ~/managerreplay/server
    .venv/bin/python app.py --mode=chunks --cameras=1 \
@@ -166,6 +176,27 @@ sudo systemctl enable --now managerreplay-server
 O arquivo `.service` já está pronto em [`deploy/systemd/`](deploy/systemd/) — ajuste o caminho do certificado dentro dele se o IP do hotspot for diferente de `10.42.0.1`. `Restart=always` garante que se ele cair, volta sozinho. Log fica no `journalctl -u managerreplay-server`.
 
 **Desligando sem tela/teclado (puxando a energia direto)**: a tela de Monitor mede CPU/RAM/temperatura na hora (via `top`/`free`/`vcgencmd`), sob demanda, só quando alguém abre a tela e aperta "Atualizar" — não existe processo escrevendo continuamente no cartão SD, então não há nada pra corromper com uma queda de energia. As gravações de vídeo continuam no cartão SD normalmente; no pior caso, só o pedaço de ~30s que estava sendo gravado no exato momento de tirar a energia pode ficar incompleto — o resto da gravação (chunks anteriores, já com escrita concluída) fica intacto.
+
+## Captive portal (Wi-Fi abre o app sozinho)
+
+Sem isso, quem conecta no hotspot precisa digitar `https://<ip-do-hotspot>:8443/` manualmente. Com o captive portal ativo, Android/iOS/Windows detectam a rede como "sem internet" e abrem um navegador sozinhos, apontado direto pro app.
+
+Como funciona: um servidor HTTP mínimo (`deploy/captive-portal/redirect_server.py`) escuta na porta 80 e responde toda requisição com um redirect 302 pro app. Os celulares fazem probes de conectividade (`/generate_204`, `/hotspot-detect.html`, `connectivitycheck.gstatic.com` etc.) esperando um 204/200 — receber um redirect em vez disso é o gatilho que faz o SO abrir o navegador automaticamente. Um drop-in de dnsmasq (`deploy/network/dnsmasq-shared-captive.conf`) faz **todo** domínio resolver pro IP da Pi, incluindo os domínios de probe, garantindo que o redirect server é quem responde.
+
+Deploy (além do `rsync`/`scp` de sempre):
+
+```bash
+scp deploy/captive-portal/redirect_server.py rocha@<ip-da-pi>:~/managerreplay/captive-portal/
+scp deploy/systemd/managerreplay-captive.service rocha@<ip-da-pi>:/tmp/
+ssh -t rocha@<ip-da-pi> 'sudo mv /tmp/managerreplay-captive.service /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable --now managerreplay-captive'
+
+scp deploy/network/dnsmasq-shared-captive.conf rocha@<ip-da-pi>:/tmp/
+ssh -t rocha@<ip-da-pi> 'sudo mkdir -p /etc/NetworkManager/dnsmasq-shared.d && sudo mv /tmp/dnsmasq-shared-captive.conf /etc/NetworkManager/dnsmasq-shared.d/captive.conf'
+
+ssh -t rocha@<ip-da-pi> 'sudo nmcli connection down <nome-da-conexao-do-hotspot> && sudo nmcli connection up <nome-da-conexao-do-hotspot>'
+```
+
+O `.service` escuta na porta 80 como o usuário `rocha` (não root) via `AmbientCapabilities=CAP_NET_BIND_SERVICE` — já vem configurado assim, sem passo extra de permissão. Ajuste `MANAGERREPLAY_CAPTIVE_TARGET` dentro do `.service` se o IP do hotspot for diferente de `10.42.0.1`. Confirme o nome real da conexão do hotspot com `nmcli connection show` antes do último comando — reiniciá-la derruba e reconecta qualquer celular já conectado.
 
 ## Instalando o certificado nos celulares
 
