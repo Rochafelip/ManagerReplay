@@ -28,3 +28,16 @@ def list_events(events_file: Path) -> list[dict]:
         return []
     with events_file.open("r", encoding="utf-8") as f:
         return [json.loads(line) for line in f if line.strip()]
+
+
+def remove_event(events_file: Path, nome: str) -> dict | None:
+    events = list_events(events_file)
+    removed = next((e for e in events if e["nome"] == nome), None)
+    if removed is None:
+        return None
+
+    remaining = [e for e in events if e["nome"] != nome]
+    with events_file.open("w", encoding="utf-8") as f:
+        for event in remaining:
+            f.write(json.dumps(event, ensure_ascii=False) + "\n")
+    return removed
