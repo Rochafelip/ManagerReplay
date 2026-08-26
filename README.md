@@ -78,6 +78,12 @@ python3 -m venv .venv
 
 ## Deploy no Raspberry Pi
 
+Pra entrar na Pi via SSH (precisa estar na mesma rede — Wi-Fi doméstico durante o setup, ou já conectado no hotspot dela):
+
+```bash
+ssh rocha@<ip-da-pi>
+```
+
 Layout esperado na Pi, tudo sob `~/managerreplay/`:
 
 ```
