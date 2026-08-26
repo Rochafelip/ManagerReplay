@@ -78,11 +78,13 @@ python3 -m venv .venv
 
 ## Deploy no Raspberry Pi
 
-Pra entrar na Pi via SSH (precisa estar na mesma rede — Wi-Fi doméstico durante o setup, ou já conectado no hotspot dela):
+Pra entrar na Pi via SSH (precisa estar na mesma rede — Wi-Fi doméstico durante o setup, ou já conectado no hotspot dela). Usa o hostname mDNS (`managerreplay.local`, nome da própria Pi) em vez do IP — o IP muda a cada rede/reconexão, o hostname não:
 
 ```bash
-ssh rocha@<ip-da-pi>
+ssh rocha@managerreplay.local
 ```
+
+Todos os comandos `ssh`/`rsync`/`scp` deste documento usam `managerreplay.local` pelo mesmo motivo. Se o hostname não resolver (raro — depende de mDNS/Avahi, que já vem ativo por padrão no Raspberry Pi OS), descubra o IP atual com `hostname -I` direto na Pi (via teclado/tela) e substitua nos comandos.
 
 Layout esperado na Pi, tudo sob `~/managerreplay/`:
 
@@ -97,11 +99,11 @@ Layout esperado na Pi, tudo sob `~/managerreplay/`:
 
 1. **Sincronizar o código**:
    ```bash
-   rsync -av --exclude .venv --exclude __pycache__ server/ rocha@<ip-da-pi>:~/managerreplay/server/
+   rsync -av --exclude .venv --exclude __pycache__ server/ rocha@managerreplay.local:~/managerreplay/server/
    ```
 2. **Sincronizar a versão** (bump o número em `VERSION` antes de commitar qualquer mudança que valha marcar como nova versão; depois copie o arquivo pra Pi):
    ```bash
-   scp VERSION rocha@<ip-da-pi>:~/managerreplay/VERSION
+   scp VERSION rocha@managerreplay.local:~/managerreplay/VERSION
    ```
    A tela **Monitor** mostra esse número — depois de um deploy, confira lá se bate com o que você esperava, como forma de confirmar que o deploy realmente pegou.
 3. **Criar a senha admin** (uma vez — protege o "Excluir" em Arquivos e Lances; sem esse arquivo o servidor recusa subir):
@@ -192,14 +194,14 @@ Como funciona: um servidor HTTP mínimo (`deploy/captive-portal/redirect_server.
 Deploy (além do `rsync`/`scp` de sempre):
 
 ```bash
-scp deploy/captive-portal/redirect_server.py rocha@<ip-da-pi>:~/managerreplay/captive-portal/
-scp deploy/systemd/managerreplay-captive.service rocha@<ip-da-pi>:/tmp/
-ssh -t rocha@<ip-da-pi> 'sudo mv /tmp/managerreplay-captive.service /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable --now managerreplay-captive'
+scp deploy/captive-portal/redirect_server.py rocha@managerreplay.local:~/managerreplay/captive-portal/
+scp deploy/systemd/managerreplay-captive.service rocha@managerreplay.local:/tmp/
+ssh -t rocha@managerreplay.local 'sudo mv /tmp/managerreplay-captive.service /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable --now managerreplay-captive'
 
-scp deploy/network/dnsmasq-shared-captive.conf rocha@<ip-da-pi>:/tmp/
-ssh -t rocha@<ip-da-pi> 'sudo mkdir -p /etc/NetworkManager/dnsmasq-shared.d && sudo mv /tmp/dnsmasq-shared-captive.conf /etc/NetworkManager/dnsmasq-shared.d/captive.conf'
+scp deploy/network/dnsmasq-shared-captive.conf rocha@managerreplay.local:/tmp/
+ssh -t rocha@managerreplay.local 'sudo mkdir -p /etc/NetworkManager/dnsmasq-shared.d && sudo mv /tmp/dnsmasq-shared-captive.conf /etc/NetworkManager/dnsmasq-shared.d/captive.conf'
 
-ssh -t rocha@<ip-da-pi> 'sudo nmcli connection down <nome-da-conexao-do-hotspot> && sudo nmcli connection up <nome-da-conexao-do-hotspot>'
+ssh -t rocha@managerreplay.local 'sudo nmcli connection down <nome-da-conexao-do-hotspot> && sudo nmcli connection up <nome-da-conexao-do-hotspot>'
 ```
 
 O `.service` escuta na porta 80 como o usuário `rocha` (não root) via `AmbientCapabilities=CAP_NET_BIND_SERVICE` — já vem configurado assim, sem passo extra de permissão. Ajuste `MANAGERREPLAY_CAPTIVE_TARGET` dentro do `.service` se o IP do hotspot for diferente de `10.42.0.1`. Confirme o nome real da conexão do hotspot com `nmcli connection show` antes do último comando — reiniciá-la derruba e reconecta qualquer celular já conectado.
